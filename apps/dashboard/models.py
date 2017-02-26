@@ -1,0 +1,1 @@
+"""Import all models for dashboard apps and add all generic dashboard related models here."""from apps.dashboard.account.models import *from apps.dashboard.member.models import *from apps.dashboard.billing.models import *from apps.dashboard.notification.models import *from apps.dashboard.utils.models import *

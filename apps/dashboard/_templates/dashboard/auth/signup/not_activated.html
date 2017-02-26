@@ -1,0 +1,34 @@
+{% extends "dashboard/_master.html" %}
+{% block title %}Invalid Code{% endblock %}
+{% block meta_title %}Invalid Code{% endblock %}
+{% block meta_description %}Invalid Code{% endblock %}
+{% block meta_keywords %}Invalid Code{% endblock %}
+{% block page_class %}widescreen {% endblock %}
+
+{% block content %}
+    <div class="account-pages"></div>
+    <div class="wrapper-page" ng-controller="signupCtrl">
+        <div class="ex-page-content text-center">
+            <div class="text-error"><span class="text-danger">Sorry!</span></div>
+            <h4 class="text-muted">Your verification code is either invalid or expired. You can request new link.</h4>
+            <br>
+
+            <div class="form-group">
+                <div class="col-xs-12">
+                    <input class="form-control " ng-class="utilsServices.errors.email ? 'parsley-error' : ''"
+                           ng-model="email" type="email" required="" placeholder="Email Address">
+                    <ul ng-cloak class="parsley-errors-list filled"
+                        ng-repeat="(key, value) in utilsServices.errors.email">
+                        <li class="parsley-required">{[value]}</li>
+                    </ul>
+                </div>
+            </div>
+            <a class="btn btn-info mtl" href="{% url 'dashboard_login' %}"> Back To Login</a>
+            <a class="btn btn-primary mtl" href="{% url 'dashboard_reset' %}"> Request New Link</a>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+
+{% endblock %}

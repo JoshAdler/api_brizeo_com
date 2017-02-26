@@ -1,0 +1,93 @@
+<div class="topbar" ng-cloak ng-controller="utilsCtrl">
+
+    <!-- LOGO -->
+    <div class="topbar-left">
+        <div class="text-center">
+            <a href="{% url 'dashboard_home' %}" class="logo">Brizeo
+                {#                <img src="{{ STATIC_URL }}dashboard/images/logo/logo.png" class="header_logo">#}
+            </a>
+        </div>
+    </div>
+
+    <!-- Button mobile view to collapse sidebar menu -->
+    <div class="navbar navbar-default" role="navigation">
+        <div class="container">
+            <div class="">
+                <div class="pull-left">
+                    <button class="button-menu-mobile open-left">
+                        <i class="ion-navicon"></i>
+                    </button>
+                    <span class="clearfix"></span>
+                </div>
+
+                <ul class="nav navbar-nav navbar-right pull-right">
+
+                    <li class="hidden-xs">
+                        <a target="_blank" href="{[utilsServices.accountProfile.full_store_url]}" class="waves-effect waves-light"><i
+                                class="fa fa-globe" aria-hidden="true"></i></a>
+                    </li>
+                    <li class="dropdown hidden-xs">
+                        <a data-target="#" class="dropdown-toggle waves-effect waves-light"
+                           data-toggle="dropdown" aria-expanded="true">
+                            <i class="icon-bell"></i> <span class="badge badge-xs badge-danger">{[utilsServices.notifications.length||0]}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-lg">
+                            <li class="notifi-title"><span class="label label-default pull-right"
+                                                           ng-if="utilsServices.notifications.length>0">New {[utilsServices.notifications.length||0]}</span>Notification
+                            </li>
+
+                            <div class="notification-dropdown">
+                                <li class="list-group notification-list" ng-show="utilsServices.notifications
+                                .length==0">
+                                    <!-- list item-->
+                                    <a class="list-group-item">
+                                        <div class="media text-center">
+                                            <small>No new notifications found</small>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li class="list-group notification-list"
+                                    ng-repeat="notification in utilsServices.notifications">
+                                    <!-- list item-->
+                                    <a class="list-group-item">
+                                        <div class="media">
+                                            <div class="pull-left p-r-10">
+                                                <em class="fa fa-bell-o fa-2x text-info"></em>
+                                            </div>
+                                            <div class="media-body">
+                                                <h5 class="media-heading">{[notification.title]}</h5>
+                                                <p class="m-0">
+                                                    <small>{[notification.description]}</small>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </li>
+                            </div>
+
+                            <li>
+                                <a href="{% url 'dashboard_notification' %}" class="list-group-item text-right">
+                                    <small class="font-600">View all notifications</small>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <li class="dropdown">
+                        <a href="" class="dropdown-toggle profile" data-toggle="dropdown" aria-expanded="true"><img
+                                src="{{ STATIC_URL }}dashboard/images/users/avatar-1.jpg" alt="user-img"
+                                class="img-circle"> {[utilsServices.memberProfile.full_name]}</a>
+                        <ul class="dropdown-menu">
+                            <li><a href="{% url 'dashboard_profile' %}"><i class="ti-user m-r-5"></i> Profile</a></li>
+                            <li><a href="{% url 'dashboard_account' %}"><i class="icon-settings m-r-5"></i> Account</a>
+                            <li><a href="#"><i class="icon-settings m-r-5"></i> Your Store</a>
+                            </li>
+                            <li><a href="{% url 'dashboard_logout' %}"><i class="ti-power-off m-r-5"></i> Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+            <!--/.nav-collapse -->
+        </div>
+    </div>
+</div>

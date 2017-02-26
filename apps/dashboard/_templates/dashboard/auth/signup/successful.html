@@ -1,0 +1,25 @@
+{% extends "dashboard/_master.html" %}
+{% block title %} Signup{% endblock %}
+{% block meta_title %}Signup{% endblock %}
+{% block meta_description %}Signup{% endblock %}
+{% block meta_keywords %}Signup{% endblock %}
+{% block page_class %}widescreen {% endblock %}
+
+{% block content %}
+    <div class="account-pages"></div>
+    <div class="wrapper-page">
+        <div class="ex-page-content text-center">
+            <div class="text-error"><span class="text-success">Awesome!</span></div>
+            <h4 class="text-muted">Thank you for registering with Brizeo. Please check your email inbox for next
+                steps.</h4><br>
+            <br>
+            <a class="btn btn-primary" href="{% url 'dashboard_login' %}"> Login</a>
+
+        </div>
+    </div>
+{% endblock %}
+
+
+{% block extra_scripts %}
+
+{% endblock %}

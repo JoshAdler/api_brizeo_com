@@ -1,0 +1,64 @@
+{% extends "dashboard/_master.html" %}
+{% block title %}Domain Not Found{% endblock %}
+{% block meta_title %}Domain Not Found{% endblock %}
+{% block meta_description %}Domain Not Found{% endblock %}
+{% block meta_keywords %}Domain Not Found{% endblock %}
+{% block page_class %}external-page external-alt sb-l-c sb-r-c onload-check{% endblock %}
+
+{% block content %}
+	<!-- Start: Content-Wrapper -->
+	<section id="content_wrapper" ng-controller="signupCtrl">
+
+		<!-- Begin: Content -->
+		<section id="content">
+			<div class="center-block mt70" style="max-width: 625px">
+
+				<!-- Login Logo + Meta -->
+				<div class="row table-layout">
+
+					<div class="col-xs-7 pln">
+						<h2 class="text-dark mbn confirmation-header"><i class="fa fa-times text-danger"></i> Domain Not
+							Found.</h2>
+					</div>
+
+					<div class="col-xs-5 text-right va-b">
+						<div class="meta-links alt">
+							<a href="https://gobrizeo.co/" class="">GoBrizeo.co</a>
+							<span class="ph5"> |</span>
+							<a href="https://gobrizeo.co/support" class="active">Support</a>
+						</div>
+					</div>
+
+				</div>
+
+				<!-- Confirmation Panel -->
+				<div class="panel mt15">
+					<div class="panel-body pt30 p25 pb15">
+
+						<p class="lh25 text-dark fs15">We are unable to find this domain name.</p>
+
+
+					</div>
+				</div>
+
+				<!-- Registration Links -->
+				<div class="login-links">
+					<p>
+						<a href="{% url 'dashboard_login' %}" class="active" title="Login">Back To Sign In</a>
+					</p>
+
+					<p>Haven't yet Registered?
+						<a href="{% url 'dashboard_signup' %}" title="Sign up">Sign up here</a>
+					</p>
+				</div>
+
+
+			</div>
+		</section>
+	</section>
+{% endblock %}
+
+
+{% block extra_scripts %}
+
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "dashboard/_master.html" %}
+{% block title %}Brizeo - Not Allowed{% endblock %}
+{% block meta_title %}Brizeo - Not Allowed{% endblock %}
+{% block meta_description %}Brizeo - Not Allowed{% endblock %}
+{% block meta_keywords %}Brizeo - Not Allowed{% endblock %}
+{% block page_class %}external-page external-alt sb-l-c sb-r-c onload-check{% endblock %}
+
+{% block content %}
+	<!-- Start: Content-Wrapper -->
+	<section id="content_wrapper" ng-controller="signupCtrl">
+
+		<!-- Begin: Content -->
+		<section id="content">
+			<div class="center-block mt70" style="max-width: 625px">
+
+				<!-- Login Logo + Meta -->
+				<div class="row table-layout">
+
+					<div class="col-xs-7 pln">
+						<h2 class="text-dark mbn confirmation-header"><i class="fa fa-ban text-danger"></i> Not Allowed</h2>
+					</div>
+
+					<div class="col-xs-5 text-right va-b">
+						<div class="meta-links alt">
+							<a href="https://brizeo-dev.xtresoft.net/" class="">Brizeo.com</a>
+							<span class="ph5"> |</span>
+							<a href="https://brizeo-dev.xtresoft.net/support" class="active">Support</a>
+						</div>
+					</div>
+
+				</div>
+
+				<!-- Confirmation Panel -->
+				<div class="panel mt15">
+					<div class="panel-body pt30 p25 pb15">
+
+						<p class="lh25 fs15">Sorry you are not allowed to perform this action.</p>
+
+						<p class="text-right mt20">
+							<a class="btn btn-primary btn-rounded ph40" href="/">Back to dashboard</a>
+						</p>
+
+					</div>
+				</div>
+
+
+
+			</div>
+		</section>
+	</section>
+{% endblock %}
+
+
+{% block extra_scripts %}
+
+{% endblock %}

@@ -1,0 +1,54 @@
+<div class="left side-menu">
+    <div class="sidebar-inner slimscrollleft">
+        <!--- Divider -->
+        <div id="sidebar-menu">
+            <ul>
+
+                <li class="text-muted menu-title">Navigation</li>
+
+                <li class="has_sub">
+                    <a  class="waves-effect"><i class="fa fa-star" aria-hidden="true"></i><span>Inventory</span> <span
+                            class="menu-arrow"></span></a>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'dashboard_inventory' %}">View All</a></li>
+                        <li><a href="{% url 'dashboard_inventor_add' %}">Add Inventory</a></li>
+{#                        <li><a href="{% url 'dashboard_inventor_configuration' %}">Configuration</a></li>#}
+                    </ul>
+                </li>
+                <li class="has_sub">
+                    <a  class="waves-effect"><i class="fa fa-shopping-bag"
+                                                        aria-hidden="true"></i><span>Orders</span> <span
+                            class="menu-arrow"></span></a>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'dashboard_order' %}">View All</a></li>
+                        <li><a href="{% url 'dashboard_order_add' %}">Add Order</a></li>
+                        <li><a href="{% url 'dashboard_discount_code' %}">Discount Codes</a></li>
+                        <li><a href="{% url 'dashboard_order_configuration' %}">Configuration</a></li>
+                    </ul>
+                </li>
+                <li class="has_sub">
+                    <a  class="waves-effect"><i class="fa fa-sliders"
+                                                        aria-hidden="true"></i><span>Account</span> <span
+                            class="menu-arrow"></span></a>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'member' %}">View All</a></li>
+                        <li><a href="{% url 'member_add' %}">Add Member</a></li>
+                        <li><a href="{% url 'member_configuration' %}">Configuration</a></li>
+                    </ul>
+                </li>
+                <li class="has_sub">
+                    <a  class="waves-effect"><i class="fa fa-credit-card"
+                                                        aria-hidden="true"></i><span>Billing</span> <span
+                            class="menu-arrow"></span></a>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'dashboard_billing_subscription' %}">Subscription</a></li>
+                        <li><a href="{% url 'dashboard_billing_payment_method' %}">Payment Method</a></li>
+                    </ul>
+                </li>
+
+            </ul>
+            <div class="clearfix"></div>
+        </div>
+        <div class="clearfix"></div>
+    </div>
+</div>

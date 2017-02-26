@@ -1,0 +1,55 @@
+<script type="text/ng-template" id="importInventoryModal.html">
+
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true" ng-click="importInventoryClose()">×
+        </button>
+        <h4 class="modal-title">Import Inventory</h4>
+    </div>
+    <div class="modal-body">
+
+        <div class="row" ng-show="progressPercentage<100">
+            <div class="col-lg-12">
+                <p>
+                    To upload your inventory please <a href="#">download</a> this sample zip file and use it to fill all
+                    your inventory
+                    data and images. Further instructions are available in zip file.
+                </p>
+
+            </div>
+        </div>
+        <div class="row" ng-show="progressPercentage==100">
+            <div class="col-lg-12">
+                <p>
+                    Thank you for uploading inventory. You can leave this page and we will notify you once import is
+                    complete.
+                </p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-12">
+                <uib-progressbar class="progress-striped" value="progressPercentage" type="success">
+                    {[progressPercentage]}%
+                </uib-progressbar>
+            </div>
+        </div>
+        <div class="row" ng-show="progressPercentage<100">
+            <div class="col-lg-12">
+                <div ngf-drop="uploadInventoryZip($file, $invalidFiles)"
+                     ngf-fix-orientation="true"
+                     ngf-select="uploadInventoryZip($file, $invalidFiles)"
+                     ng-model="inventoryUpload"
+                     class="drop-box"
+                     ngf-drag-over-class="'dragover'" ngf-multiple="false" ngf-allow-dir="false"
+                     accept=".zip">
+                    <span>Drag-n-drop zip file here or click here to upload</span>
+                </div>
+                <div ngf-no-file-drop>File Drag/Drop is not supported for this browser</div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-white btn-custom waves-effect" data-dismiss="modal"
+                ng-click="importInventoryClose()">Close
+        </button>
+    </div>
+</script>

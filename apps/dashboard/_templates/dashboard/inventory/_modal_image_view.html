@@ -1,0 +1,23 @@
+<script type="text/ng-template" id="imageViewModal.html">
+
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true" ng-click="closeImage()">×
+        </button>
+        <h4 class="modal-title">Image View</h4>
+    </div>
+    <div class="modal-body">
+
+        <div class="row">
+            <div class="col-lg-12">
+                <img ng-src="{[inventoryImage.url]}" width="100%">
+
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-white btn-custom waves-effect" data-dismiss="modal"
+                ng-click="closeImage()">Close
+        </button>
+        <a href="{[inventoryImage.url]}" target="_blank" class="btn btn-success btn-custom waves-effect waves-light">Download</a>
+    </div>
+</script>

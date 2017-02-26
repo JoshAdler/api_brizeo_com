@@ -1,0 +1,29 @@
+{% extends 'rest_framework_swagger/base.html' %}
+
+{# Override this template in your own templates directory to customize #}
+{% block header %}
+	<div id="header">
+		<div class="swagger-ui-wrap">
+			{% block branding %}
+				<a id="logo" href="">App APIs</a>
+			{% endblock %}
+			{% block api_selector %}
+				<form id="api_selector">
+
+					<div class="input"><input placeholder="http://example.com/api" id="input_baseUrl" name="baseUrl"
+					                          type="text"/></div>
+					<div class="input"><input placeholder="api_key" id="input_apiKey" name="apiKey" type="text"/></div>
+					<div class="input"><a id="explore" href="#">Explore</a></div>
+				</form>
+			{% endblock %}
+		</div>
+	</div>
+{% endblock %}
+
+        {% block django_rest_swagger %}
+            <div id="django-rest-swagger">
+                <div class="swagger-ui-wrap">
+{#                    <a href="">For questions please contact us</a>#}
+                </div>
+            </div>
+        {% endblock %}

@@ -1,0 +1,23 @@
+{% extends "dashboard/_master.html" %}
+{% block title %}Account Activated{% endblock %}
+{% block meta_title %}Account Activated{% endblock %}
+{% block meta_description %}Account Activated{% endblock %}
+{% block meta_keywords %}Account Activated{% endblock %}
+{% block page_class %}widescreen{% endblock %}
+
+{% block content %}
+    <div class="account-pages"></div>
+    <div class="wrapper-page">
+        <div class="ex-page-content text-center">
+            <div class="text-error"><span class="text-success">All Done!</span></div>
+            <h4 class="text-muted">Than you for confirming your email address. You can use your account now.</h4><br>
+            <br>
+            <a class="btn btn-primary" href="{% url 'dashboard_login' %}"> Login</a>
+        </div>
+    </div>
+{% endblock %}
+
+
+{% block extra_scripts %}
+
+{% endblock %}
