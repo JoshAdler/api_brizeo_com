@@ -2,6 +2,8 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var firebase = require('firebase-admin');
 var lodash = require('lodash');
+async = require('async');
+var nodemailer = require('nodemailer');
 
 
 var serviceAccount = require("./brizeo-7571c-firebase-adminsdk.json");
@@ -19,6 +21,27 @@ firebase.initializeApp({
 	//  databaseURL: 'https://fir-test1-7cb44.firebaseio.com/'
 });
 
+
+
+
+var smtpTransport = nodemailer.createTransport("SMTP", {  
+    service: 'Gmail',
+    auth: {
+        user: 'joshua.adler1@gmail.com',
+        pass: ''
+    }
+});
+
+var mailOptions = {  
+    from: 'Brizeo <saltfactory@gmail.com>',
+    to: 'admin@brizeo.com',
+    subject: 'Brizeo Notification',
+    text: ''
+};
+
+
+
+
 var db = firebase.database();
 
 var usersRef = db.ref("/User");
@@ -27,6 +50,7 @@ var momentImagesRef = db.ref("/MomentImages");
 var momentImageLikesRef = db.ref("/MomentImages");
 var interestsRef = db.ref("/Interests");
 var matchRef = db.ref("/Match");
+var notificationRef = db.ref("/Notifications");
 
 var res200 = {
 	status: 200,
@@ -111,18 +135,18 @@ app.get('/moments/:userid/:sort/:filter', function (req, res) {
 	if (req.params.sort == "popular") {
 		sortstr = "numberOfLikes";
 	}
-	var filterstr = req.params.sort;
-
-	momentImagesRef.child(req.params.userid).orderByChild(sortstr).once("value", function (snapshot) {
+	var filterstr = req.params.filter;
+	momentImagesRef.orderByChild(userId).equalTo(req.params.userid).once("value", function (snapshot) {
 		console.log(snapshot);
 		if (snapshot.exists()) {
-			var arr = [];
-			snapshot.forEach((child) => {
-				if (child.momentsPassion == filterstr) arr.push(child.val());
-			});
-			res.send(arr);
+			var moments = snapshot.val();
+			if (filterstr != "all")
+				moments = lodash.filter(moments, { momentsPassion: filterstr });
+			moments = _.sortBy(moments, sortstr);
+			res.send(moments);
 		} else {
 			res.send(res404);
+			return;
 		}
 	});
 });
@@ -133,44 +157,55 @@ app.get('/moments/:sort/:filter', function (req, res) {
 	if (req.params.sort == "popular") {
 		sortstr = "numberOfLikes";
 	}
-	var filterstr = req.params.sort;
+	var filterstr = req.params.filter;
 
-	momentImagesRef.orderByChild(sortstr).once("value", function (snapshot) {
-		console.log(snapshot);
-		if (snapshot.exists()) {
-			var arr = [];
-			snapshot.forEach((child) => {
-				//if (child.momentsPassion == filterstr)
-				arr.push(child.val());
-			});
-			res.send(arr);
-		} else {
-			res.send(res404);
-		}
-	});
+	if (filterstr != "all") {
+		momentImagesRef.orderByChild(sortsmomentsPassion).equalTo(req.params.filterstr).once("value", function (snapshot) {
+			console.log(snapshot);
+			if (snapshot.exists()) {
+				var moments = _.sortBy(snapshot.val(), sortstr);
+				res.send(moments);
+			} else {
+				res.send(res404);
+			}
+		});
+	} else {
+		momentImagesRef.orderByChild(sortstr).once("value", function (snapshot) {
+			console.log(snapshot);
+			if (snapshot.exists()) {
+				res.send(snapshot.val());
+			} else {
+				res.send(res404);
+			}
+		});
+	}
 });
 
-//9) GetAllMoments (we can combine this and the previous method in one)
-app.get('/moments/:sort/:filter', function (req, res) {
+//9) GetMatchedMomentsByUserId
+app.get('/matchedmoments/:userid/:sort/:filter', function (req, res) {
 	var sortstr = "updatedAt";
 	if (req.params.sort == "popular") {
 		sortstr = "numberOfLikes";
 	}
 	var filterstr = req.params.sort;
 
-	momentImagesRef.orderByChild(sortstr).once("value", function (snapshot) {
-		console.log(snapshot);
-		if (snapshot.exists()) {
-			var arr = [];
-			snapshot.forEach((child) => {
-				//if (child.momentsPassion == filterstr)
-				arr.push(child.val());
+	momentImageLikesRef.orderByChild(userId).equalTo(req.params.userid).once("value", function(snapshot) {
+			var arymoments = [];
+			async.forEach(snapshot.val(), function (matchrow, callback) {
+				momentImagesRef.child(matchrow.imageId).once("value", function (snapshot) {
+					console.log(snapshot.val());
+					if (snapshot.exists()) arymoments.push(snapshot.val());
+					callback();
+				});
+			}, function (err) {
+				if (filterstr != "all")
+					moments = lodash.filter(arymoments, { momentsPassion: filterstr });
+				arymoments = _.sortBy(arymoments, sortstr);
+				res.send(arymoments);
 			});
-			res.send(arr);
-		} else {
-			res.send(res404);
-		}
+
 	});
+
 });
 
 //10) CreateMoment
@@ -196,6 +231,76 @@ app.get('/interests', function (req, res) {
 	});
 });
 
+//12) GetLikersForMomentByMomentId 
+app.get('/likemoments/users/:momentid', function (req, res) {
+	momentImageLikesRef.orderByChild("imageId").equalTo(req.params.momnetid).once('value', function (snapshot) {
+		if (snapshot.exists()) {
+			// var arr = [];
+			// snapshot.forEach(function(child) {
+			// 	arr.push(child.val().userId);
+			// });
+			var aryuser = [];
+			async.forEach(snapshot.val(), function (likerrow, callback) {
+				usersRef.child(likerrow.userId).once("value", function (snapshot) {
+					console.log(snapshot.val());
+					if (snapshot.exists()) aryuser.push(snapshot.val());
+					callback();
+				});
+			}, function (err) {
+				res.json(aryuser);
+			});
+		} else
+			res.send(res404);
+	});
+});
+
+//13) ReportMoment
+app.get('/reportmoment/:momentid/:userid', function (req, res) {
+	mailOptions.text = "Moment Reported";
+
+	smtpTransport.sendMail(mailOptions, function(error, response){
+		if (error){
+			console.log(error);
+		} else {
+			console.log("Message sent : " + response.message);
+		}
+		smtpTransport.close();
+	});
+});
+
+//14) GetNotificationsForUserId
+app.get('/notifications/:fbid', function (req, res) {
+	notificationRef.orderByChild("receiveUser").equalTo(req.params.fbid).once('value', function (snapshot) {
+		if (snapshot.exists()) {
+			res.send(snapshot.val());
+		} else 
+			res.send(res404);
+	});
+
+});
+
+//15) GetUser
+app.get('/notifications/:fbid1/:fbid2', function (req, res) {
+	notificationRef.orderByChild("receiveUser").equalTo(req.params.fbid1).once('value', function (snapshot) {
+		if (snapshot.exists()) {
+			var curlike = lodash.filter(snapshot.val(), { sendUser: req.params.fbid2 });
+			if (curlike.length > 0) {
+				usersRef.child(req.params.fbid2).once("value", function (snapshot) {
+					console.log(snapshot.val());
+					if (snapshot.exists()) {
+						res.send(snapshot.val());
+					} else {
+						res.send(res404);
+					}
+				});				
+				return;
+			} else
+				res.send(res404);
+		} else 
+			res.send(res404);
+	});
+});
+
 //16) LikeMoment
 app.put('/likemoments/:fbid/:momentid', function (req, res) {
 	var likemoment = {
@@ -203,9 +308,9 @@ app.put('/likemoments/:fbid/:momentid', function (req, res) {
 		userId: req.params.fbid
 	};
 
-	momentImageLikesRef.orderByChild("userId").equalTo(req.params.fbid).once('value', function(snapshot) {
+	momentImageLikesRef.orderByChild("userId").equalTo(req.params.fbid).once('value', function (snapshot) {
 		if (snapshot.exists()) {
-			var curlike = lodash.filter(snapshot, {imageId:req.params.momentid});
+			var curlike = lodash.filter(snapshot.val(), { imageId: req.params.momentid });
 			if (curlike.length > 0) {
 				res.send(res200);
 				return;
@@ -217,12 +322,12 @@ app.put('/likemoments/:fbid/:momentid', function (req, res) {
 		if (error)
 			res.send(res500);
 		else {
-			momentImagesRef.child(req.params.momentid+"/numberOfLikes").once("value", function (snapshot) {
+			momentImagesRef.child(req.params.momentid + "/numberOfLikes").once("value", function (snapshot) {
 				if (snapshot.exists())
 					nol = snapshot.val()++;
 				else
 					nol = 1;
-				momentImagesRef.child(req.params.momentid+"/numberOfLikes").set(nol);
+				momentImagesRef.child(req.params.momentid + "/numberOfLikes").set(nol);
 			});
 			res.send(res200);
 		}
@@ -232,9 +337,9 @@ app.put('/likemoments/:fbid/:momentid', function (req, res) {
 
 //17) unlikeMoment
 app.delete('/likemoments/:fbid/:momentid', function (req, res) {
-	momentImageLikesRef.orderByChild("userId").equalTo(req.params.fbid).once('value', function(snapshot) {
+	momentImageLikesRef.orderByChild("userId").equalTo(req.params.fbid).once('value', function (snapshot) {
 		if (snapshot.exists()) {
-			var curlike = lodash.filter(snapshot, {imageId:req.params.momentid});
+			var curlike = lodash.filter(snapshot.val(), { imageId: req.params.momentid });
 			if (curlike.length == 1)
 				momentImageLikesRef.child(curlike[0].objectId).remove();
 			else {
@@ -247,19 +352,19 @@ app.delete('/likemoments/:fbid/:momentid', function (req, res) {
 		}
 	});
 
-	momentImagesRef.child(req.params.momentid+"/numberOfLikes").once("value", function (snapshot) {
+	momentImagesRef.child(req.params.momentid + "/numberOfLikes").once("value", function (snapshot) {
 		if (snapshot.exists() && snapshot.val() > 0)
 			nol = snapshot.val()--;
 		else
 			nol = 0;
-		momentImagesRef.child(req.params.momentid+"/numberOfLikes").set(nol);
+		momentImagesRef.child(req.params.momentid + "/numberOfLikes").set(nol);
 	});
 	res.send(res200);
 });
 
 //18) DeleteMoment
 app.delete('/moments/:fbid/:momentid', function (req, res) {
-	momentImagesRef.child(req.params.momentid).remove(function(error) {
+	momentImagesRef.child(req.params.momentid).remove(function (error) {
 		if (error)
 			res.send(res404);
 		else
@@ -268,24 +373,42 @@ app.delete('/moments/:fbid/:momentid', function (req, res) {
 });
 
 //19) ReportUser
-app.get('/report/:fbid1/:fbid2', function (req, res) {
+app.get('/reportuser/:fbid1/:fbid2', function (req, res) {
 	//to do : sending mail
+	mailOptions.text = "User Reported";
 
+	smtpTransport.sendMail(mailOptions, function(error, response){
+		if (error){
+			console.log(error);
+		} else {
+			console.log("Message sent : " + response.message);
+		}
+		smtpTransport.close();
+	});
 });
 
 //20) DownloadEvent
 app.get('/downloadevent/:fbid1/:times', function (req, res) {
 	//to do : sending mail
+	mailOptions.text = "DownloadEvent";
 
+	smtpTransport.sendMail(mailOptions, function(error, response){
+		if (error){
+			console.log(error);
+		} else {
+			console.log("Message sent : " + response.message);
+		}
+		smtpTransport.close();
+	});
 });
 
 //21) ApproveMatch
 app.post('/match/:fbid1/:fbid2', function (req, res) {
 	var appr = {
-		userA:req.params.fbid1,
-		userB:req.params.fbid2
+		userA: req.params.fbid1,
+		userB: req.params.fbid2
 	};
-	matchRef.push(appr, function(error) {
+	matchRef.push(appr, function (error) {
 		if (error)
 			res.send(res404);
 		else
@@ -294,17 +417,55 @@ app.post('/match/:fbid1/:fbid2', function (req, res) {
 });
 
 //22) Decline match
-app.delete('/approve/:fbid1/:fbid2', function (req, res) {
-	matchRef.orderByChild("userA").equalTo(req.params.fbid1).once('value', function(snapshot) {
+app.delete('/match/:fbid1/:fbid2', function (req, res) {
+	matchRef.orderByChild("userA").equalTo(req.params.fbid1).once('value', function (snapshot) {
 		if (snapshot.exists()) {
-			var curlike = lodash.filter(snapshot, {userB:req.params.fbid2});
+			var curlike = lodash.filter(snapshot.val(), { userB: req.params.fbid2 });
 			if (curlike.length == 1) {
-				momentImageLikesRef.child(curlike[0].objectId).remove();
+				matchRef.child(curlike[0].objectId).remove();
 				res.send(res200);
 				return;
 			}
 		}
 		res.send(res404);
+	});
+});
+
+//23) GetUsersForMatch
+app.get('/approveuserformatch/:fbid', function (req, res) {
+	matchRef.orderByChild("userA").equalTo(req.params.fbid).once('value', function (snapshot) {
+		if (snapshot.exists()) {
+			var aryuser = [];
+			async.forEach(snapshot.val(), function (matchrow, callback) {
+				usersRef.child(likerrow.userB).once("value", function (snapshot) {
+					console.log(snapshot.val());
+					if (snapshot.exists()) aryuser.push(snapshot.val());
+					callback();
+				});
+			}, function (err) {
+				res.json(aryuser);
+			});
+		} else
+			res.send(res404);
+	});
+});
+
+//24) GetMatchesForUser
+app.get('/approvematchforuser/:fbid', function (req, res) {
+	matchRef.orderByChild("userB").equalTo(req.params.fbid).once('value', function (snapshot) {
+		if (snapshot.exists()) {
+			var aryuser = [];
+			async.forEach(snapshot.val(), function (matchrow, callback) {
+				usersRef.child(likerrow.userA).once("value", function (snapshot) {
+					console.log(snapshot.val());
+					if (snapshot.exists()) aryuser.push(snapshot.val());
+					callback();
+				});
+			}, function (err) {
+				res.json(aryuser);
+			});
+		} else
+			res.send(res404);
 	});
 });
 
