@@ -62,7 +62,7 @@ var res404 = {
 };
 var res500 = {
 	status: 500,
-	statusText: "Firebase Error"
+	statusText: "Server Error"
 };
 
 //1) SignIn
@@ -255,14 +255,16 @@ app.get('/likemoments/users/:momentid', function (req, res) {
 });
 
 //13) ReportMoment
-app.get('/reportmoment/:momentid/:userid', function (req, res) {
+app.post('/reportmoment/:momentid/:userid', function (req, res) {
 	mailOptions.text = "Moment Reported";
 
 	smtpTransport.sendMail(mailOptions, function(error, response){
 		if (error){
 			console.log(error);
+      res.sned(res500);
 		} else {
 			console.log("Message sent : " + response.message);
+      res.sned(res200);
 		}
 		smtpTransport.close();
 	});
@@ -373,30 +375,34 @@ app.delete('/moments/:fbid/:momentid', function (req, res) {
 });
 
 //19) ReportUser
-app.get('/reportuser/:fbid1/:fbid2', function (req, res) {
+app.post('/reportuser/:fbid1/:fbid2', function (req, res) {
 	//to do : sending mail
 	mailOptions.text = "User Reported";
 
 	smtpTransport.sendMail(mailOptions, function(error, response){
 		if (error){
 			console.log(error);
+      res.send(res500);
 		} else {
 			console.log("Message sent : " + response.message);
+      res.sned(res200);
 		}
 		smtpTransport.close();
 	});
 });
 
 //20) DownloadEvent
-app.get('/downloadevent/:fbid1/:times', function (req, res) {
+app.post('/downloadevent/:fbid1/:times', function (req, res) {
 	//to do : sending mail
 	mailOptions.text = "DownloadEvent";
 
 	smtpTransport.sendMail(mailOptions, function(error, response){
 		if (error){
 			console.log(error);
+      res.sned(res500);
 		} else {
 			console.log("Message sent : " + response.message);
+      res.send(res200);
 		}
 		smtpTransport.close();
 	});
