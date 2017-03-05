@@ -1,18 +1,23 @@
 var firebase = require('firebase-admin');
+var firebasestor = require('firebase');
 
 var serviceAccount = require("./brizeo-7571c-firebase-adminsdk.json");
 //var serviceAccount = require("./fir-test1-7cb44-firebase-adminsdk-4mixq-144aafe9a8.json");
 
 firebase.initializeApp({
   credential: firebase.credential.cert(serviceAccount),
-  databaseURL: 'https://brizeo-7571c.firebaseio.com'
-//  databaseURL: 'https://fir-test1-7cb44.firebaseio.com/'
+  databaseURL: 'https://brizeo-7571c.firebaseio.com',
+  storageBucket: "gs://brizeo-7571c.appspot.com"
+
 });
 
 var db = firebase.database();
 
 var usersRef = db.ref("/User");
 var searchchild = usersRef.child("2aMOJP6zFh");
+
+var storageRef = firebasestor.storage().ref();
+
 /*searchchild.once("value", function(snapshot) {
   console.log(snapshot.val());
 });*/

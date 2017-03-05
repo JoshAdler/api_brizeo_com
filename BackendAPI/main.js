@@ -111,7 +111,7 @@ app.get('/preferences/:fbid', function (req, res) {
 app.put('/preferences/:fbid', function (req, res) {
 	preferencesRef.child(req.params.fbid).set(req.body.newpref, function (error) {
 		if (error) {
-			res.send(res500);
+			res.send(res404);
 		} else {
 			res.send(res200);
 		}
@@ -122,7 +122,7 @@ app.put('/preferences/:fbid', function (req, res) {
 app.put('/users/:fbid', function (req, res) {
 	usersRef.child(req.params.fbid).set(req.body.newuser, function (error) {
 		if (error) {
-			res.send(res500);
+			res.send(res404);
 		} else {
 			res.send(res200);
 		}
@@ -492,7 +492,7 @@ app.put('/countries/:fbid', function (req, res) {
 				countries.push(req.body.country);
 				usersRef.child(req.params.fbid + "/countries").set(countries, function (error) {
 					if (error) {
-						res.send(404);
+						res.send(res500);
 					} else {
 						res.send(countries);
 					}
