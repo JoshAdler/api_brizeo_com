@@ -4,6 +4,9 @@ var firebase = require('firebase-admin');
 var lodash = require('lodash');
 async = require('async');
 var nodemailer = require('nodemailer');
+var gcloud = require('gcloud');
+var multer = require('multer');
+var upload = multer({dest:'./tmp/'});
 
 
 var serviceAccount = require("./brizeo-7571c-firebase-adminsdk.json");
@@ -18,22 +21,41 @@ app.use(bodyParser.json());
 firebase.initializeApp({
 	credential: firebase.credential.cert(serviceAccount),
 	databaseURL: 'https://brizeo-7571c.firebaseio.com'
-	//  databaseURL: 'https://fir-test1-7cb44.firebaseio.com/'
+//	databaseURL: 'https://fir-test1-7cb44.firebaseio.com/'
 });
 
+
+
+
+
+var projectId = process.env.GCLOUD_PROJECT_ID;
+var storage = gcloud.storage({
+    projectId: "brizeo-7571c",
+    keyFilename: './brizeo-7571c-firebase-adminsdk.json',
+});
+
+var bucket = storage.bucket('brizeo-7571c.appspot.com')
+
+bucket.upload('./icon-web.png', function(err, file) {
+  if (err) {
+    console.log("bucket upload error");
+	console.log(err);
+  } else
+  	console.log("bucket upload success");
+});
 
 
 
 var smtpTransport = nodemailer.createTransport({  
-    service: 'Gmail',
+    service: "Gmail",
     auth: {
-        user: 'joshua.adler1@gmail.com',
-        pass: ''
+        user: 'brizeoapp@gmail.com',
+        pass: 'Zulick1836!'
     }
 });
 
 var mailOptions = {  
-    from: 'Brizeo <saltfactory@gmail.com>',
+    from: 'Brizeo Notification',
     to: 'admin@brizeo.com',
     subject: 'Brizeo Notification',
     text: ''
@@ -48,7 +70,7 @@ var usersRef = db.ref("/User");
 var preferencesRef = db.ref("/Preferences");
 var momentImagesRef = db.ref("/MomentImages");
 var momentImageLikesRef = db.ref("/MomentImages");
-var interestsRef = db.ref("/Interests");
+var passionsRef = db.ref("/Passions");
 var matchRef = db.ref("/Match");
 var notificationRef = db.ref("/Notifications");
 
@@ -75,50 +97,60 @@ var newpref = {
 
 //1) SignIn
 app.post('/users', function (req, res) {
-	var facebookid = req.body.newusers.facebookid;
-  var newuserref = usersRef.push(req.body.newuser);
-  preferencesRef.child(newuserref.key).set(newpref, function (error) {
-    if (error) {
-      res.send(res500);
-    } else {
-      res.send(res200);
-    }
-  });
-});
-
-//2) GetCurrentUser (fbid)->user
-app.get('/users/:fbid', function (req, res) {
-	usersRef.child(req.params.fbid).once("value", function (snapshot) {
-		console.log(snapshot.val());
-		if (snapshot.exists()) {
-			res.send(snapshot.val());
+	var newuserref = usersRef.push(req.body.newuser);
+	console.log(newuserref);
+	preferencesRef.child(newuserref.key).set(newpref, function (error) {
+		if (error) {
+			res.send(res500);
 		} else {
-			res.send(res404);
+			res.send(newuserref.key);
 		}
 	});
 });
 
+//2) GetCurrentUser (userid)->user
+app.get('/users/:fbid', function (req, res) {
+	usersRef.orderByChild("facebookId").equalTo(req.params.fbid).once("value", function (snapshot) {
+		console.log(snapshot.val());
+		if (snapshot.exists()) {
+			for(key in snapshot.val()) {
+				res.send(snapshot.val()[key]);
+				return;
+			}
+		} else {
+			res.status(500).end();
+		}
+	});
+});
+
+//3) UploadFilesForUser (It may be images or videos)
+app.post('/upload/:userid', upload.array('UploadFile'), function(req, res){
+    var upFile = req.files;
+	console.log(upFile);
+	res.send(res200);
+});
+
 //4) GetPreferencesByUserId or GetCurrentPreferences (userid)->preference
-app.get('/preferences/:fbid', function (req, res) {
-	preferencesRef.child(req.params.fbid).once("value", function (snapshot) {
+app.get('/preferences/:userid', function (req, res) {
+	preferencesRef.child(req.params.userid).once("value", function (snapshot) {
 		console.log(snapshot.val());
 		if (snapshot.exists()) {
 			res.send(snapshot.val());
 		} else {
-      preferencesRef.child(fbid).set(newpref, function (error) {
-        if (error) {
-          res.send(res500);
-        } else {
-          res.send(newpref);
-        }
-      });
+			preferencesRef.child(userid).set(newpref, function (error) {
+				if (error) {
+					res.send(res500);
+				} else {
+					res.send(newpref);
+				}
+			});
 		}
 	});
 });
 
 //5) UpdateUserPreferencesInfo 
-app.put('/preferences/:fbid', function (req, res) {
-	preferencesRef.child(req.params.fbid).set(req.body.newpref, function (error) {
+app.put('/preferences/:userid', function (req, res) {
+	preferencesRef.child(req.params.userid).set(req.body.newpref, function (error) {
 		if (error) {
 			res.send(res404);
 		} else {
@@ -128,8 +160,8 @@ app.put('/preferences/:fbid', function (req, res) {
 });
 
 //6) updateUserInfo
-app.put('/users/:fbid', function (req, res) {
-	usersRef.child(req.params.fbid).set(req.body.newuser, function (error) {
+app.put('/users/:userid', function (req, res) {
+	usersRef.child(req.params.userid).set(req.body.newuser, function (error) {
 		if (error) {
 			res.send(res404);
 		} else {
@@ -145,13 +177,13 @@ app.get('/moments/:userid/:sort/:filter', function (req, res) {
 		sortstr = "numberOfLikes";
 	}
 	var filterstr = req.params.filter;
-	momentImagesRef.orderByChild(userId).equalTo(req.params.userid).once("value", function (snapshot) {
-		console.log(snapshot);
+	momentImagesRef.orderByChild("userId").equalTo(req.params.userid).once("value", function (snapshot) {
+		console.log(snapshot.val());
 		if (snapshot.exists()) {
 			var moments = snapshot.val();
 			if (filterstr != "all")
 				moments = lodash.filter(moments, { momentsPassion: filterstr });
-			moments = _.sortBy(moments, sortstr);
+			moments = lodash.sortBy(moments, sortstr);
 			res.send(moments);
 		} else {
 			res.send(res404);
@@ -169,10 +201,10 @@ app.get('/moments/:sort/:filter', function (req, res) {
 	var filterstr = req.params.filter;
 
 	if (filterstr != "all") {
-		momentImagesRef.orderByChild(sortsmomentsPassion).equalTo(req.params.filterstr).once("value", function (snapshot) {
+		momentImagesRef.orderByChild("momentsPassion").equalTo(req.params.filterstr).once("value", function (snapshot) {
 			console.log(snapshot);
 			if (snapshot.exists()) {
-				var moments = _.sortBy(snapshot.val(), sortstr);
+				var moments = lodash.sortBy(snapshot.val(), sortstr);
 				res.send(moments);
 			} else {
 				res.send(res404);
@@ -182,7 +214,8 @@ app.get('/moments/:sort/:filter', function (req, res) {
 		momentImagesRef.orderByChild(sortstr).once("value", function (snapshot) {
 			console.log(snapshot);
 			if (snapshot.exists()) {
-				res.send(snapshot.val());
+				var moments = lodash.sortBy(snapshot.val(), sortstr);
+				res.send(moments);
 			} else {
 				res.send(res404);
 			}
@@ -198,7 +231,7 @@ app.get('/matchedmoments/:userid/:sort/:filter', function (req, res) {
 	}
 	var filterstr = req.params.sort;
 
-	momentImageLikesRef.orderByChild(userId).equalTo(req.params.userid).once("value", function(snapshot) {
+	momentImageLikesRef.orderByChild("userId").equalTo(req.params.userid).once("value", function(snapshot) {
 			var arymoments = [];
 			async.forEach(snapshot.val(), function (matchrow, callback) {
 				momentImagesRef.child(matchrow.imageId).once("value", function (snapshot) {
@@ -209,7 +242,7 @@ app.get('/matchedmoments/:userid/:sort/:filter', function (req, res) {
 			}, function (err) {
 				if (filterstr != "all")
 					moments = lodash.filter(arymoments, { momentsPassion: filterstr });
-				arymoments = _.sortBy(arymoments, sortstr);
+				arymoments = lodash.sortBy(arymoments, sortstr);
 				res.send(arymoments);
 			});
 
@@ -229,8 +262,8 @@ app.put('/moments', function (req, res) {
 });
 
 //11) GetAllInterests (It means «travel», «foodie», etc.)
-app.get('/interests', function (req, res) {
-	interestsRef.once("value", function (snapshot) {
+app.get('/passions', function (req, res) {
+	passionsRef.once("value", function (snapshot) {
 		console.log(snapshot.val());
 		if (snapshot.exists()) {
 			res.send(snapshot.val());
@@ -240,7 +273,7 @@ app.get('/interests', function (req, res) {
 	});
 });
 
-//12) GetLikersForMomentByMomentId 
+//12) GetLikersForMomentByMomentId
 app.get('/likemoments/users/:momentid', function (req, res) {
 	momentImageLikesRef.orderByChild("imageId").equalTo(req.params.momnetid).once('value', function (snapshot) {
 		if (snapshot.exists()) {
@@ -270,18 +303,18 @@ app.post('/reportmoment/:momentid/:userid', function (req, res) {
 	smtpTransport.sendMail(mailOptions, function(error, response){
 		if (error){
 			console.log(error);
-      res.sned(res500);
+			res.send(res500);
 		} else {
-			console.log("Message sent : " + response.message);
-      res.sned(res200);
+			console.log("Message sent : ", response.response);
+			res.send(res200);
 		}
 		smtpTransport.close();
 	});
 });
 
 //14) GetNotificationsForUserId
-app.get('/notifications/:fbid', function (req, res) {
-	notificationRef.orderByChild("receiveUser").equalTo(req.params.fbid).once('value', function (snapshot) {
+app.get('/notifications/:userid', function (req, res) {
+	notificationRef.orderByChild("receiveUser").equalTo(req.params.userid).once('value', function (snapshot) {
 		if (snapshot.exists()) {
 			res.send(snapshot.val());
 		} else 
@@ -291,12 +324,12 @@ app.get('/notifications/:fbid', function (req, res) {
 });
 
 //15) GetUser
-app.get('/notifications/:fbid1/:fbid2', function (req, res) {
-	notificationRef.orderByChild("receiveUser").equalTo(req.params.fbid1).once('value', function (snapshot) {
+app.get('/notifications/:userid1/:userid2', function (req, res) {
+	notificationRef.orderByChild("receiveUser").equalTo(req.params.userid1).once('value', function (snapshot) {
 		if (snapshot.exists()) {
-			var curlike = lodash.filter(snapshot.val(), { sendUser: req.params.fbid2 });
+			var curlike = lodash.filter(snapshot.val(), { sendUser: req.params.userid2 });
 			if (curlike.length > 0) {
-				usersRef.child(req.params.fbid2).once("value", function (snapshot) {
+				usersRef.child(req.params.userid2).once("value", function (snapshot) {
 					console.log(snapshot.val());
 					if (snapshot.exists()) {
 						res.send(snapshot.val());
@@ -313,13 +346,13 @@ app.get('/notifications/:fbid1/:fbid2', function (req, res) {
 });
 
 //16) LikeMoment
-app.put('/likemoments/:fbid/:momentid', function (req, res) {
+app.put('/likemoments/:userid/:momentid', function (req, res) {
 	var likemoment = {
 		imageId: req.params.momentid,
-		userId: req.params.fbid
+		userId: req.params.userid
 	};
 
-	momentImageLikesRef.orderByChild("userId").equalTo(req.params.fbid).once('value', function (snapshot) {
+	momentImageLikesRef.orderByChild("userId").equalTo(req.params.userid).once('value', function (snapshot) {
 		if (snapshot.exists()) {
 			var curlike = lodash.filter(snapshot.val(), { imageId: req.params.momentid });
 			if (curlike.length > 0) {
@@ -347,8 +380,8 @@ app.put('/likemoments/:fbid/:momentid', function (req, res) {
 });
 
 //17) unlikeMoment
-app.delete('/likemoments/:fbid/:momentid', function (req, res) {
-	momentImageLikesRef.orderByChild("userId").equalTo(req.params.fbid).once('value', function (snapshot) {
+app.delete('/likemoments/:userid/:momentid', function (req, res) {
+	momentImageLikesRef.orderByChild("userId").equalTo(req.params.userid).once('value', function (snapshot) {
 		if (snapshot.exists()) {
 			var curlike = lodash.filter(snapshot.val(), { imageId: req.params.momentid });
 			if (curlike.length == 1)
@@ -374,7 +407,7 @@ app.delete('/likemoments/:fbid/:momentid', function (req, res) {
 });
 
 //18) DeleteMoment
-app.delete('/moments/:fbid/:momentid', function (req, res) {
+app.delete('/moments/:userid/:momentid', function (req, res) {
 	momentImagesRef.child(req.params.momentid).remove(function (error) {
 		if (error)
 			res.send(res404);
@@ -384,44 +417,44 @@ app.delete('/moments/:fbid/:momentid', function (req, res) {
 });
 
 //19) ReportUser
-app.post('/reportuser/:fbid1/:fbid2', function (req, res) {
+app.post('/reportuser/:userid1/:userid2', function (req, res) {
 	//to do : sending mail
 	mailOptions.text = "User Reported";
 
 	smtpTransport.sendMail(mailOptions, function(error, response){
 		if (error){
 			console.log(error);
-      res.send(res500);
+			res.send(res500);
 		} else {
 			console.log("Message sent : " + response.message);
-      res.sned(res200);
+			res.sned(res200);
 		}
 		smtpTransport.close();
 	});
 });
 
 //20) DownloadEvent
-app.post('/downloadevent/:fbid1/:times', function (req, res) {
+app.post('/downloadevent/:userid1/:times', function (req, res) {
 	//to do : sending mail
 	mailOptions.text = "DownloadEvent";
 
 	smtpTransport.sendMail(mailOptions, function(error, response){
 		if (error){
 			console.log(error);
-      res.sned(res500);
+			res.sned(res500);
 		} else {
 			console.log("Message sent : " + response.message);
-      res.send(res200);
+			res.send(res200);
 		}
 		smtpTransport.close();
 	});
 });
 
 //21) ApproveMatch
-app.post('/match/:fbid1/:fbid2', function (req, res) {
+app.post('/match/:userid1/:userid2', function (req, res) {
 	var appr = {
-		userA: req.params.fbid1,
-		userB: req.params.fbid2
+		userA: req.params.userid1,
+		userB: req.params.userid2
 	};
 	matchRef.push(appr, function (error) {
 		if (error)
@@ -432,10 +465,10 @@ app.post('/match/:fbid1/:fbid2', function (req, res) {
 });
 
 //22) Decline match
-app.delete('/match/:fbid1/:fbid2', function (req, res) {
-	matchRef.orderByChild("userA").equalTo(req.params.fbid1).once('value', function (snapshot) {
+app.delete('/match/:userid1/:userid2', function (req, res) {
+	matchRef.orderByChild("userA").equalTo(req.params.userid1).once('value', function (snapshot) {
 		if (snapshot.exists()) {
-			var curlike = lodash.filter(snapshot.val(), { userB: req.params.fbid2 });
+			var curlike = lodash.filter(snapshot.val(), { userB: req.params.userid2 });
 			if (curlike.length == 1) {
 				matchRef.child(curlike[0].objectId).remove();
 				res.send(res200);
@@ -447,8 +480,8 @@ app.delete('/match/:fbid1/:fbid2', function (req, res) {
 });
 
 //23) GetUsersForMatch
-app.get('/approveuserformatch/:fbid', function (req, res) {
-	matchRef.orderByChild("userA").equalTo(req.params.fbid).once('value', function (snapshot) {
+app.get('/approveuserformatch/:userid', function (req, res) {
+	matchRef.orderByChild("userA").equalTo(req.params.userid).once('value', function (snapshot) {
 		if (snapshot.exists()) {
 			var aryuser = [];
 			async.forEach(snapshot.val(), function (matchrow, callback) {
@@ -466,8 +499,8 @@ app.get('/approveuserformatch/:fbid', function (req, res) {
 });
 
 //24) GetMatchesForUser
-app.get('/approvematchforuser/:fbid', function (req, res) {
-	matchRef.orderByChild("userB").equalTo(req.params.fbid).once('value', function (snapshot) {
+app.get('/approvematchforuser/:userid', function (req, res) {
+	matchRef.orderByChild("userB").equalTo(req.params.userid).once('value', function (snapshot) {
 		if (snapshot.exists()) {
 			var aryuser = [];
 			async.forEach(snapshot.val(), function (matchrow, callback) {
@@ -485,8 +518,8 @@ app.get('/approvematchforuser/:fbid', function (req, res) {
 });
 
 //25) GetCountriesForUser
-app.get('/countries/:fbid', function (req, res) {
-	usersRef.child(req.params.fbid + "/countries").once("value", function (snapshot) {
+app.get('/countries/:userid', function (req, res) {
+	usersRef.child(req.params.userid + "/countries").once("value", function (snapshot) {
 		console.log(snapshot.val());
 		if (snapshot.exists()) {
 			res.send(snapshot.val());
@@ -497,15 +530,15 @@ app.get('/countries/:fbid', function (req, res) {
 });
 
 //26) AddUserCountriesForUser
-app.put('/countries/:fbid', function (req, res) {
-	usersRef.child(req.params.fbid).once("value", function (snapshot) {
+app.put('/countries/:userid', function (req, res) {
+	usersRef.child(req.params.userid).once("value", function (snapshot) {
 		console.log(snapshot.val());
 		if (snapshot.exists()) {
 			var countries = snapshot.val().countries;
 			if (countries == undefined) countries = [];
 			if (countries.indexOf(req.body.country) == -1) {
 				countries.push(req.body.country);
-				usersRef.child(req.params.fbid + "/countries").set(countries, function (error) {
+				usersRef.child(req.params.userid + "/countries").set(countries, function (error) {
 					if (error) {
 						res.send(res500);
 					} else {
@@ -522,15 +555,15 @@ app.put('/countries/:fbid', function (req, res) {
 });
 
 //27) DeleteCountryForUser
-app.delete('/countries/:fbid', function (req, res) {
-	usersRef.child(req.params.fbid).once("value", function (snapshot) {
+app.delete('/countries/:userid', function (req, res) {
+	usersRef.child(req.params.userid).once("value", function (snapshot) {
 		console.log(snapshot.val());
 		if (snapshot.exists()) {
 			var countries = snapshot.val().countries;
 			if (countries == undefined) res.send(404);
 			if (countries.indexOf(req.body.country) != -1) {
 				countries.splice(countries.indexOf(req.body.country), 1);
-				usersRef.child(req.params.fbid + "/countries").set(countries, function (error) {
+				usersRef.child(req.params.userid + "/countries").set(countries, function (error) {
 					if (error) {
 						res.send(404);
 					} else {
