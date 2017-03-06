@@ -24,7 +24,7 @@ firebase.initializeApp({
 
 
 
-var smtpTransport = nodemailer.createTransport("SMTP", {  
+var smtpTransport = nodemailer.createTransport({  
     service: 'Gmail',
     auth: {
         user: 'joshua.adler1@gmail.com',
@@ -65,22 +65,25 @@ var res500 = {
 	statusText: "Server Error"
 };
 
+var newpref = {
+  genders : ["male", "female"],
+  passions : ["yNtHTBEGAw"],
+  lowerAgeLimit: 18,
+  upperAgeLimit: 85,
+  maxSearchDistance: 100
+};
+
 //1) SignIn
 app.post('/users', function (req, res) {
 	var facebookid = req.body.newusers.facebookid;
-	usersRef.child(facebookid).set(req.body.newuser, function (error) {
-		if (error) {
-			preferencesRef.child(facebookid).set(req.body.newpref, function (error) {
-				if (error) {
-					res.send(res500);
-				} else {
-					res.send(res200);
-				}
-			});
-		} else {
-			res.send(res500);
-		}
-	});
+  var newuserref = usersRef.push(req.body.newuser);
+  preferencesRef.child(newuserref.key).set(newpref, function (error) {
+    if (error) {
+      res.send(res500);
+    } else {
+      res.send(res200);
+    }
+  });
 });
 
 //2) GetCurrentUser (fbid)->user
@@ -102,7 +105,13 @@ app.get('/preferences/:fbid', function (req, res) {
 		if (snapshot.exists()) {
 			res.send(snapshot.val());
 		} else {
-			res.send(res404);
+      preferencesRef.child(fbid).set(newpref, function (error) {
+        if (error) {
+          res.send(res500);
+        } else {
+          res.send(newpref);
+        }
+      });
 		}
 	});
 });
