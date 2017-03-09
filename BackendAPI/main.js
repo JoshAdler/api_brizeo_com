@@ -5,7 +5,7 @@ var lodash = require('lodash');
 async = require('async');
 var nodemailer = require('nodemailer');
 var multer = require('multer');
-var upload = multer({dest:'uploads/'});
+var upload = multer({ dest: 'uploads/' });
 var fs = require('fs');
 
 
@@ -23,7 +23,7 @@ app.use(bodyParser.json());
 firebase.initializeApp({
 	credential: firebase.credential.cert(serviceAccount),
 	databaseURL: 'https://brizeo-7571c.firebaseio.com'
-//	databaseURL: 'https://fir-test1-7cb44.firebaseio.com/'
+	//	databaseURL: 'https://fir-test1-7cb44.firebaseio.com/'
 });
 
 
@@ -31,28 +31,27 @@ firebase.initializeApp({
 
 
 var gcs = require('@google-cloud/storage')({
-    projectId: "brizeo-7571c",
-    keyFilename: './brizeo-7571c-firebase-adminsdk.json',
+	projectId: "brizeo-7571c",
+	keyFilename: './brizeo-7571c-firebase-adminsdk.json',
 });
 
-var bucket = gcs.bucket('brizeo-7571c.appspot.com')
+var bucket = gcs.bucket('brizeo-7571c.appspot.com');
 
 
 
-
-var smtpTransport = nodemailer.createTransport({  
-    service: "Gmail",
-    auth: {
-        user: 'brizeoapp@gmail.com',
-        pass: 'Zulick1836!'
-    }
+var smtpTransport = nodemailer.createTransport({
+	service: "Gmail",
+	auth: {
+		user: 'brizeoapp@gmail.com',
+		pass: 'Zulick1836!'
+	}
 });
 
-var mailOptions = {  
-    from: 'Brizeo Notification',
-    to: 'admin@brizeo.com',
-    subject: 'Brizeo Notification',
-    text: ''
+var mailOptions = {
+	from: 'Brizeo Notification',
+	to: 'admin@brizeo.com',
+	subject: 'Brizeo Notification',
+	text: ''
 };
 
 
@@ -82,28 +81,74 @@ var res500 = {
 };
 
 var newpref = {
-  genders : ["male", "female"],
-  passions : ["yNtHTBEGAw"],
-  lowerAgeLimit: 18,
-  upperAgeLimit: 85,
-  maxSearchDistance: 100
+	genders: ["male", "female"],
+	passions: ["yNtHTBEGAw"],
+	lowerAgeLimit: 18,
+	upperAgeLimit: 85,
+	maxSearchDistance: 100
 };
 
 //1) SignIn
-app.post('/users', function (req, res) {
+app.post('/users', upload.array('mainUploadFile'), upload.array('otherUploadFile'), function (req, res) {
 	console.log("----------------API------01------------");
 	var newuserref = usersRef.push();
 	var newuser = req.body.newuser;
 	newuser.objectId = newuserref.key;
-	newuserref.set(newuser);
-	console.log(newuserref);
-	preferencesRef.child(newuserref.key).set(newpref, function (error) {
+	newuserref.set(newuser, function (error) {
 		if (error) {
-			res.send(res500);
+			res.status(500).end();
 		} else {
-			res.send(newuserref.key);
+			preferencesRef.child(newuserref.key).set(newpref, function (error) {
+				if (error) {
+					res.status(500).end();
+				} else {
+					res.status(200).end();
+				}
+			});
 		}
+
 	});
+	console.log(newuserref);
+	var upFile = req.files;
+	console.log(req.files);
+	console.log(upFile);
+	/*
+		async.forEach(snapshot.val(), function (likerrow, callback) {
+			usersRef.child(likerrow.userId).once("value", function (snapshot) {
+				console.log(snapshot.val());
+				if (snapshot.exists()) aryuser.push(snapshot.val());
+				callback();
+			});
+		}, function (err) {
+			res.json(aryuser);
+		});
+	*/
+	//    var dirname = __dirname.split('\\');
+	/*
+		for (var i = 0; i < upFile.length; i++) {
+			if(fs.statSync(__dirname + "\\" + upFile[i].path).isFile()){
+				dotdeli = upFile[i].originalname.split('.').length;
+				var exten = "";
+				if (dotdeli > 1) {
+					exten = upFile[i].originalname.split('.')[dotdeli - 1];
+					console.log(upFile[i].originalname.split('.'));
+					console.log(exten);
+				}
+				var newname = __dirname + "\\" + upFile[i].path + "." + exten;
+				fs.rename(__dirname + "\\" + upFile[i].path, newname);
+				bucket.upload(newname, function(err, file) {
+					if (err) {
+						console.log("bucket upload error");
+					} else
+						console.log("bucket upload success");
+						console.log(file.name);
+						console.log(file.cloudStoragePublicUrl);
+						console.log(file.metadata.selfLink);
+				});
+	
+			};
+		}
+	*/
 });
 
 //2) GetCurrentUser (userid)->user
@@ -112,26 +157,26 @@ app.get('/users/:fbid', function (req, res) {
 	usersRef.orderByChild("facebookId").equalTo(req.params.fbid).once("value", function (snapshot) {
 		console.log(snapshot.val());
 		if (snapshot.exists()) {
-			for(key in snapshot.val()) {
+			for (key in snapshot.val()) {
 				res.send(snapshot.val()[key]);
 				return;
 			}
 		} else {
-			res.status(500).end();
+			res.status(404).end();
 		}
 	});
 });
 
 //3) UploadFilesForUser (It may be images or videos)
-app.post('/upload/:userid', upload.array('uploadFile'), function(req, res){
+app.post('/upload/:userid', upload.array('uploadFile'), function (req, res) {
 	console.log("----------------API------03------------");
-    var upFile = req.files;
+	var upFile = req.files;
+	console.log(req.files);
 	console.log(upFile);
 
-//    var dirname = __dirname.split('\\');
-	var count = 0;
+	//    var dirname = __dirname.split('\\');
 	for (var i = 0; i < upFile.length; i++) {
-		if(fs.statSync(__dirname + "\\" + upFile[i].path).isFile()){ //fs 모듈을 사용해서 파일의 존재 여부를 확인한다.
+		if (fs.statSync(__dirname + "\\" + upFile[i].path).isFile()) {
 			dotdeli = upFile[i].originalname.split('.').length;
 			var exten = "";
 			if (dotdeli > 1) {
@@ -141,14 +186,28 @@ app.post('/upload/:userid', upload.array('uploadFile'), function(req, res){
 			}
 			var newname = __dirname + "\\" + upFile[i].path + "." + exten;
 			fs.rename(__dirname + "\\" + upFile[i].path, newname);
-			bucket.upload(newname, function(err, file) {
+			bucket.upload(newname, function (err, file) {
 				if (err) {
 					console.log("bucket upload error");
-					console.log(err);
-				} else
+					res.status(500).end();
+				} else {
 					console.log("bucket upload success");
+					file.makePublic().then(function (data) {
+						usersRef.child(req.params.userid).once("value", function (snapshot) {
+							if (snapshot.exists()) {
+								var curuserdata = snapshot.val();
+								var userdata = {};
+								userdata.otherProfileImages = [];
+								if (curuserdata.hasOwnProperty("otherProfileImages"))
+									userdata.otherProfileImages = curuserdata.otherProfileImages;
+								userdata.otherProfileImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+								usersRef.child(req.params.userid).update(userdata);
+							}
+							res.status(200).end();
+						});
+					});
+				}
 			});
-			res.send(res200);
 		};
 	}
 });
@@ -161,9 +220,9 @@ app.get('/preferences/:userid', function (req, res) {
 		if (snapshot.exists()) {
 			res.send(snapshot.val());
 		} else {
-			preferencesRef.child(userid).set(newpref, function (error) {
+			preferencesRef.child(req.params.userid).set(newpref, function (error) {
 				if (error) {
-					res.send(res500);
+					res.status(500).end();
 				} else {
 					res.send(newpref);
 				}
@@ -177,9 +236,9 @@ app.put('/preferences/:userid', function (req, res) {
 	console.log("----------------API------05------------");
 	preferencesRef.child(req.params.userid).set(req.body.newpref, function (error) {
 		if (error) {
-			res.send(res404);
+			res.status(404).end();
 		} else {
-			res.send(res200);
+			res.status(200).end();
 		}
 	});
 });
@@ -189,9 +248,9 @@ app.put('/users/:userid', function (req, res) {
 	console.log("----------------API------06------------");
 	usersRef.child(req.params.userid).set(req.body.newuser, function (error) {
 		if (error) {
-			res.send(res404);
+			res.status(404).end();
 		} else {
-			res.send(res200);
+			res.status(200).end();
 		}
 	});
 });
@@ -212,7 +271,17 @@ app.get('/moments/:userid/:sort/:filter', function (req, res) {
 			if (filterstr != "all")
 				moments = lodash.filter(moments, { momentsPassion: filterstr });
 			moments = lodash.sortBy(moments, sortstr);
-			res.send(moments);
+
+			async.forEach(moments, function (moment, callback) {
+				console.log("----moment---------", moment);
+				usersRef.child(moment.userId).once("value", function (snapshot) {
+					console.log(snapshot.val());
+					if (snapshot.exists()) moment.user = snapshot.val();
+					callback();
+				});
+			}, function (err) {
+				res.send(moments);
+			});
 		} else {
 			res.send(moments);
 			return;
@@ -233,21 +302,41 @@ app.get('/moments/:sort/:filter', function (req, res) {
 	if (filterstr != "all") {
 		momentImagesRef.orderByChild("momentsPassion").equalTo(filterstr).once("value", function (snapshot) {
 			console.log(snapshot);
-			if (snapshot.exists()) {
+			if (snapshot.exists())
 				moments = lodash.sortBy(snapshot.val(), sortstr);
+
+			async.forEach(moments, function (moment, callback) {
+				if (moment.hasOwnProperty("userId")) {
+					usersRef.child(moment.userId).once("value", function (snapshot) {
+						console.log(snapshot.val());
+						if (snapshot.exists()) moment.user = snapshot.val();
+						callback();
+					});
+				} else
+					callback();
+			}, function (err) {
 				res.send(moments);
-			} else {
-				res.send(moments);
-			}
+			});
 		});
 	} else {
 		momentImagesRef.orderByChild(sortstr).once("value", function (snapshot) {
-			console.log(snapshot);
 			if (snapshot.exists()) {
-				moments = lodash.sortBy(snapshot.val(), sortstr);
-				res.send(moments);
-			} else {
-				res.send(moments);
+				snapshot.forEach(function (moment) {
+					moments.push(moment.val());
+				});
+				async.forEach(moments, function (moment, callback) {
+					console.log("----moment---------", moment);
+					if (moment.hasOwnProperty("userId")) {
+						usersRef.child(moment.userId).once("value", function (snapshot) {
+							console.log(snapshot.val());
+							if (snapshot.exists()) moment.user = snapshot.val();
+							callback();
+						});
+					} else
+						callback();
+				}, function (err) {
+					res.send(moments);
+				});
 			}
 		});
 	}
@@ -260,38 +349,82 @@ app.get('/matchedmoments/:userid/:sort/:filter', function (req, res) {
 	if (req.params.sort == "popular") {
 		sortstr = "numberOfLikes";
 	}
-	var filterstr = req.params.sort;
+	var filterstr = req.params.filter;
 
-	momentImageLikesRef.orderByChild("userId").equalTo(req.params.userid).once("value", function(snapshot) {
-			var arymoments = [];
-			console.log(snapshot.val());
-			async.forEach(snapshot.val(), function (matchrow, callback) {
-				console.log("----matchro---------", matchrow);
-				momentImagesRef.child(matchrow.imageId).once("value", function (snapshot) {
-					console.log(snapshot.val());
-					if (snapshot.exists()) arymoments.push(snapshot.val());
+	momentImageLikesRef.orderByChild("userId").equalTo(req.params.userid).once("value", function (snapshot) {
+		var arymoments = [];
+		console.log(snapshot.val());
+		async.forEach(snapshot.val(), function (matchrow, callback) {
+			console.log("----matchro---------", matchrow);
+			momentImagesRef.child(matchrow.imageId).once("value", function (snapshot) {
+				console.log("----------momentimagesref-----------", snapshot.val());
+				if (snapshot.exists()) arymoments.push(snapshot.val());
+				callback();
+			});
+		}, function (err) {
+			if (filterstr != "all")
+				arymoments = lodash.filter(arymoments, { momentsPassion: filterstr });
+			console.log(arymoments);
+			arymoments = lodash.sortBy(arymoments, sortstr);
+			async.forEach(arymoments, function (moment, callback) {
+				console.log("----moment---------", moment);
+				if (moment.hasOwnProperty("userId")) {
+					usersRef.child(moment.userId).once("value", function (snapshot) {
+						console.log(snapshot.val());
+						if (snapshot.exists()) moment.user = snapshot.val();
+						callback();
+					});
+				} else
 					callback();
-				});
 			}, function (err) {
-				if (filterstr != "all")
-					moments = lodash.filter(arymoments, { momentsPassion: filterstr });
-				arymoments = lodash.sortBy(arymoments, sortstr);
 				res.send(arymoments);
 			});
+		});
 
 	});
 });
 
 //10) CreateMoment
-app.put('/moments', function (req, res) {
+app.put('/moments', upload.single('uploadFile'), function (req, res) {
 	console.log("----------------API------10------------");
-	momentImagesRef.push(req.body.newmoment, function (error) {
-		if (error) {
-			res.send(res500);
-		} else {
-			res.send(res200);
+	var upFile = req.file;
+	if (upFile == undefined) {
+		res.sendStatus(500);
+		return;
+	}
+
+	if (fs.statSync(__dirname + "\\" + upFile.path).isFile()) {
+		dotdeli = upFile.originalname.split('.').length;
+		var exten = "";
+		if (dotdeli > 1) {
+			exten = upFile.originalname.split('.')[dotdeli - 1];
 		}
-	});
+		var newname = __dirname + "\\" + upFile.path + "." + exten;
+		fs.rename(__dirname + "\\" + upFile.path, newname);
+		bucket.upload(newname, function (err, file) {
+			if (err) {
+				console.log("bucket upload error");
+				console.log(err);
+			} else {
+				console.log("bucket upload success");
+				var newmoment = req.body.newmoment;
+
+				file.makePublic().then(function (data) {
+					newmoment = req.body.newmoment;
+					newmoment.momentUploadImages = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+					newmomentref = momentImagesRef.push();
+					newmomentref.set(newmoment, function (error) {
+						if (error) {
+							res.status(500).end();
+						} else {
+							res.send(newmomentref.key);
+						}
+					});
+				});
+			}
+		});
+		res.status(200).end();
+	};
 });
 
 //11) GetAllInterests (It means «travel», «foodie», etc.)
@@ -302,7 +435,7 @@ app.get('/passions', function (req, res) {
 		if (snapshot.exists()) {
 			res.send(snapshot.val());
 		} else {
-			res.send(res404);
+			res.status(404).end();
 		}
 	});
 });
@@ -336,13 +469,13 @@ app.post('/reportmoment/:momentid/:userid', function (req, res) {
 	console.log("----------------API------13------------");
 	mailOptions.text = "Moment Reported";
 
-	smtpTransport.sendMail(mailOptions, function(error, response){
-		if (error){
+	smtpTransport.sendMail(mailOptions, function (error, response) {
+		if (error) {
 			console.log(error);
-			res.send(res500);
+			res.status(500).end();
 		} else {
 			console.log("Message sent : ", response.response);
-			res.send(res200);
+			res.status(200).end();
 		}
 		smtpTransport.close();
 	});
@@ -354,33 +487,123 @@ app.get('/notifications/:userid', function (req, res) {
 	notificationRef.orderByChild("receiveUser").equalTo(req.params.userid).once('value', function (snapshot) {
 		if (snapshot.exists()) {
 			res.send(snapshot.val());
-		} else 
+		} else
 			res.send([]);
 	});
 
 });
 
-//15) GetUser
-app.get('/notifications/:userid1/:userid2', function (req, res) {
-	console.log("----------------API------15------------");
-	notificationRef.orderByChild("receiveUser").equalTo(req.params.userid1).once('value', function (snapshot) {
-		if (snapshot.exists()) {
-			var curlike = lodash.filter(snapshot.val(), { sendUser: req.params.userid2 });
-			if (curlike.length > 0) {
-				usersRef.child(req.params.userid2).once("value", function (snapshot) {
-					console.log(snapshot.val());
-					if (snapshot.exists()) {
-						res.send(snapshot.val());
-					} else {
-						res.send(res404);
-					}
-				});				
-				return;
-			} else
-				res.send(res404);
-		} else 
-			res.send(res404);
+var getUserStatus = function (userid1, userid2) {
+	return new Promise(function(resolve, reject) {
+			var matches = [];
+			matchRef.orderByChild("userA").equalTo(userid1).once('value', function (snapshot) {
+			if (snapshot.exists()) {
+				snapshot.forEach(function (match) {
+					matches.push(match);
+					//matches.push(match);
+				});
+				var curlike = lodash.filter(matches, (match) => {
+					return match.val().userB === userid2;
+				});
+				if (curlike.length == 1) {
+					resolve(curlike[0].val().status);
+				}
+			}
+			resolve(-1);
+		});
 	});
+}
+
+//15) GetUser
+app.get('/match/:userid1/:userid2', function (req, res) {
+	console.log("----------------API------15------------");
+	getUserStatus(req.params.userid1, req.params.userid2).then(function(status) {
+		status1 = status;
+		getUserStatus(req.params.userid2, req.params.userid1).then(function(status) {
+			status2 = status;
+			console.log("------status1--", status1, "-----status2---", status2, "------------");
+			if (status1 == -1 && status2 == -1)
+				res.send(1);
+			else if (status == 1 && status2 == 1)
+				res.send(7);
+
+		});
+	});
+
+
+
+	// var matches = [];
+	// matchRef.orderByChild("userA").equalTo(req.params.userid1).once('value', function (snapshot) {
+	// 	if (snapshot.exists()) {
+	// 		snapshot.forEach(function (match) {
+	// 			matches.push(match);
+	// 			//matches.push(match);
+	// 		});
+	// 		var curlike = lodash.filter(matches, (match) => {
+	// 			return match.val().userB === req.params.userid2;
+	// 		});
+	// 		if (curlike.length == 1) {
+	// 			console.log("------status--------", curlike[0].val().status);
+
+	// 			return;
+	// 		}
+	// 	} else {
+	// 		matchRef.orderByChild("userA").equalTo(req.params.userid2).once('value', function (snapshot) {
+	// 			if (snapshot.exists()) {
+	// 				snapshot.forEach(function (match) {
+	// 					console.log(match.ref);
+	// 					console.log(match);
+	// 					matches.push(match);
+	// 					//matches.push(match);
+	// 				});
+	// 				var curlike = lodash.filter(matches, (match) => {
+	// 					return match.val().userB === req.params.userid2;
+	// 				});
+	// 				console.log(curlike);
+	// 				if (curlike.length == 1) {
+	// 					curlike[0].ref.set(appr);
+	// 					res.status(200).end();
+	// 					return;
+	// 				}
+	// 			}
+	// 		});
+	// 	}
+
+
+	// });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	// notificationRef.orderByChild("receiveUser").equalTo(req.params.userid1).once('value', function (snapshot) {
+	// 	console.log(snapshot.val());
+	// 	if (snapshot.exists()) {
+	// 		var curlike = lodash.filter(snapshot.val(), { sendUser: req.params.userid2 });
+	// 		if (curlike.length > 0) {
+	// 			usersRef.child(req.params.userid2).once("value", function (snapshot) {
+	// 				console.log(snapshot.val());
+	// 				if (snapshot.exists()) {
+	// 					res.send(snapshot.val());
+	// 				} else {
+	// 					res.status(404).end();
+	// 				}
+	// 			});
+	// 			return;
+	// 		} else
+	// 			res.status(404).end();
+	// 	} else
+	// 		res.status(404).end();
+	// });
 });
 
 //16) LikeMoment
@@ -401,7 +624,7 @@ app.put('/likemoments/:userid/:momentid', function (req, res) {
 					if (snapshot.exists())
 						res.send(snapshot.val());
 					else
-						res.send(res404);
+						res.status(404).end();
 				});
 				return;
 			}
@@ -410,20 +633,19 @@ app.put('/likemoments/:userid/:momentid', function (req, res) {
 		likemoment.objectId = tmpref.key;
 		tmpref.set(likemoment, function (error) {
 			if (error)
-				res.send(res500);
+				res.status(500).end();
 			else {
 				momentImagesRef.child(req.params.momentid).once("value", function (snapshot) {
 					if (snapshot.exists()) {
 						moment = snapshot.val();
-						if (Object.keys(moment).indexOf("likedBycurrentUser") == -1) {
+						if (!moment.hasOwnProperty("likedBycurrentUser"))
 							moment.likedBycurrentUser = [];
-						}
 						moment.numberOfLikes = moment.numberOfLikes + 1;
 						moment.likedBycurrentUser.push(req.params.userid);
 						momentImagesRef.child(req.params.momentid).set(moment);
 						res.send(moment);
 					} else
-						res.send(res404);
+						res.status(404).end();
 				});
 			}
 		});
@@ -444,22 +666,21 @@ app.delete('/likemoments/:userid/:momentid', function (req, res) {
 				momentImagesRef.child(req.params.momentid).once("value", function (snapshot) {
 					if (snapshot.exists()) {
 						moment = snapshot.val();
-						if (Object.keys(moment).indexOf("likedBycurrentUser") == -1) {
+						if (moment.hasOwnProperty("likedBycurrentUser") == -1)
 							moment.likedBycurrentUser = [];
-						}
 						if (moment.numberOfLikes > 0) moment.numberOfLikes = moment.numberOfLikes - 1;
 						moment.likedBycurrentUser.splice(moment.likedBycurrentUser.indexOf(req.params.userid), 1);
 						momentImagesRef.child(req.params.momentid).set(moment);
 						res.send(moment);
 					} else
-						res.send(res404);
+						res.status(404).end();
 				});
 			} else {
-				res.send(res404);
+				res.status(404).end();
 				return;
 			}
 		} else {
-			res.send(res404);
+			res.status(404).end();
 			return;
 		}
 	});
@@ -471,9 +692,9 @@ app.delete('/moments/:userid/:momentid', function (req, res) {
 	console.log("----------------API------18------------");
 	momentImagesRef.child(req.params.momentid).remove(function (error) {
 		if (error)
-			res.send(res404);
+			res.status(404).end();
 		else
-			res.send(res200);
+			res.status(200).end();
 	});
 });
 
@@ -483,13 +704,13 @@ app.post('/reportuser/:userid1/:userid2', function (req, res) {
 	console.log("----------------API------19------------");
 	mailOptions.text = "User Reported";
 
-	smtpTransport.sendMail(mailOptions, function(error, response){
-		if (error){
+	smtpTransport.sendMail(mailOptions, function (error, response) {
+		if (error) {
 			console.log(error);
-			res.send(res500);
+			res.status(500).end();
 		} else {
 			console.log("Message sent : " + response.message);
-			res.sned(res200);
+			res.snedStatus(200);
 		}
 		smtpTransport.close();
 	});
@@ -501,47 +722,64 @@ app.post('/downloadevent/:userid1/:times', function (req, res) {
 	console.log("----------------API------20------------");
 	mailOptions.text = "DownloadEvent";
 
-	smtpTransport.sendMail(mailOptions, function(error, response){
-		if (error){
+	smtpTransport.sendMail(mailOptions, function (error, response) {
+		if (error) {
 			console.log(error);
-			res.sned(res500);
+			res.sendStatus(500);
 		} else {
 			console.log("Message sent : " + response.message);
-			res.send(res200);
+			res.status(200).end();
 		}
 		smtpTransport.close();
 	});
 });
 
+
+var likeunlikeMatch = function (req, res, status) {
+	var appr = {
+		userA: req.params.userid1,
+		userB: req.params.userid2,
+		status: status
+	};
+
+	var matches = [];
+	matchRef.orderByChild("userA").equalTo(req.params.userid1).once('value', function (snapshot) {
+		if (snapshot.exists()) {
+			snapshot.forEach(function (match) {
+				console.log(match.ref);
+				console.log(match);
+				matches.push(match);
+				//matches.push(match);
+			});
+			var curlike = lodash.filter(matches, (match) => {
+				return match.val().userB === req.params.userid2;
+			});
+			console.log(curlike);
+			if (curlike.length == 1) {
+				curlike[0].ref.set(appr);
+				res.status(200).end();
+				return;
+			}
+		}
+
+		matchRef.push(appr, function (error) {
+			if (error)
+				res.status(404).end();
+			else
+				res.sendStatus(200);
+		});
+	});
+}
 //21) ApproveMatch
 app.post('/match/:userid1/:userid2', function (req, res) {
 	console.log("----------------API------21------------");
-	var appr = {
-		userA: req.params.userid1,
-		userB: req.params.userid2
-	};
-	matchRef.push(appr, function (error) {
-		if (error)
-			res.send(res404);
-		else
-			ress.end(res200);
-	});
+	likeunlikeMatch(req, res, 1);
 });
 
 //22) Decline match
 app.delete('/match/:userid1/:userid2', function (req, res) {
 	console.log("----------------API------22------------");
-	matchRef.orderByChild("userA").equalTo(req.params.userid1).once('value', function (snapshot) {
-		if (snapshot.exists()) {
-			var curlike = lodash.filter(snapshot.val(), { userB: req.params.userid2 });
-			if (curlike.length == 1) {
-				matchRef.child(curlike[0].objectId).remove();
-				res.send(res200);
-				return;
-			}
-		}
-		res.send(res404);
-	});
+	likeunlikeMatch(req, res, 0);
 });
 
 //23) GetUsersForMatch
@@ -551,7 +789,7 @@ app.get('/approveuserformatch/:userid', function (req, res) {
 		var aryuser = [];
 		if (snapshot.exists()) {
 			async.forEach(snapshot.val(), function (matchrow, callback) {
-				usersRef.child(likerrow.userB).once("value", function (snapshot) {
+				usersRef.child(matchrow.userB).once("value", function (snapshot) {
 					console.log(snapshot.val());
 					if (snapshot.exists()) aryuser.push(snapshot.val());
 					callback();
@@ -568,10 +806,10 @@ app.get('/approveuserformatch/:userid', function (req, res) {
 app.get('/approvematchforuser/:userid', function (req, res) {
 	console.log("----------------API------24------------");
 	matchRef.orderByChild("userB").equalTo(req.params.userid).once('value', function (snapshot) {
+		var aryuser = [];
 		if (snapshot.exists()) {
-			var aryuser = [];
 			async.forEach(snapshot.val(), function (matchrow, callback) {
-				usersRef.child(likerrow.userA).once("value", function (snapshot) {
+				usersRef.child(matchrow.userA).once("value", function (snapshot) {
 					console.log(snapshot.val());
 					if (snapshot.exists()) aryuser.push(snapshot.val());
 					callback();
@@ -580,7 +818,7 @@ app.get('/approvematchforuser/:userid', function (req, res) {
 				res.json(aryuser);
 			});
 		} else
-			res.send(res404);
+			res.send(aryuser);
 	});
 });
 
@@ -592,7 +830,7 @@ app.get('/countries/:userid', function (req, res) {
 		if (snapshot.exists()) {
 			res.send(snapshot.val());
 		} else {
-			res.send(res404);
+			res.status(404).end();
 		}
 	});
 });
@@ -601,15 +839,18 @@ app.get('/countries/:userid', function (req, res) {
 app.put('/countries/:userid', function (req, res) {
 	console.log("----------------API------26------------");
 	usersRef.child(req.params.userid).once("value", function (snapshot) {
-		console.log(snapshot.val());
 		if (snapshot.exists()) {
-			var countries = snapshot.val().countries;
-			if (countries == undefined) countries = [];
+			var userinfo = snapshot.val();
+			var countries = [];
+			console.log(userinfo);
+			if (userinfo.hasOwnProperty("countries"))
+				countries = userinfo.countries;
+
 			if (countries.indexOf(req.body.country) == -1) {
 				countries.push(req.body.country);
 				usersRef.child(req.params.userid + "/countries").set(countries, function (error) {
 					if (error) {
-						res.send(res500);
+						res.status(500).end();
 					} else {
 						res.send(countries);
 					}
@@ -618,7 +859,7 @@ app.put('/countries/:userid', function (req, res) {
 				res.send(countries);
 			}
 		} else {
-			res.send(res404);
+			res.status(404).end();
 		}
 	});
 });
@@ -627,10 +868,13 @@ app.put('/countries/:userid', function (req, res) {
 app.delete('/countries/:userid', function (req, res) {
 	console.log("----------------API------27------------");
 	usersRef.child(req.params.userid).once("value", function (snapshot) {
-		console.log(snapshot.val());
 		if (snapshot.exists()) {
-			var countries = snapshot.val().countries;
-			if (countries == undefined) res.send(404);
+			var userinfo = snapshot.val();
+			var countries = [];
+			console.log(userinfo);
+			if (userinfo.hasOwnProperty("countries"))
+				countries = userinfo.countries;
+
 			if (countries.indexOf(req.body.country) != -1) {
 				countries.splice(countries.indexOf(req.body.country), 1);
 				usersRef.child(req.params.userid + "/countries").set(countries, function (error) {
@@ -644,12 +888,21 @@ app.delete('/countries/:userid', function (req, res) {
 				res.send(countries);
 			}
 		} else {
-			res.send(res404);
+			res.status(404).end();
 		}
 	});
 });
 
-
+//28) Get a moment by id
+app.get('/moments/:momentid', function (req, res) {
+	console.log("----------------API------28------------");
+	momentImagesRef.child(req.params.momentid).once("value", function (snapshot) {
+		if (snapshot.exists())
+			res.send(snapshot.val());
+		else
+			res.status(404).end();
+	});
+});
 
 
 
