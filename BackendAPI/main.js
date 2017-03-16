@@ -58,7 +58,6 @@ var mailOptions = {
 
 
 
-
 var db = firebase.database();
 
 var usersRef = db.ref("/User");
@@ -91,7 +90,7 @@ var newpref = {
 };
 
 var getUserStatus = function (userid1, userid2) {
-	return new Promise(function(resolve, reject) {
+	return new Promise(function (resolve, reject) {
 		var matches = [];
 		console.log(userid1, "------", userid2);
 		matchRef.orderByChild("userA").equalTo(userid1).once('value', function (snapshot) {
@@ -112,19 +111,12 @@ var getUserStatus = function (userid1, userid2) {
 	});
 }
 
-app.get('/test', function(req, res) {
-	downUrl = "http://chortle"
-		dotdeli = downUrl.split('.').length;
-		var exten = "";
-		console.log(dotdeli);
-		if (dotdeli > 1) {
-			exten = downUrl.split('.')[dotdeli - 1];
-		}
-		console.log(exten);
+app.get('/test', function (req, res) {
+	res.send("kkk");
 })
 
 
-//1) SignIn
+//1) SignUp
 app.post('/users', function (req, res) {
 	console.log("----------------API------01------------");
 	// var newuser = {
@@ -135,6 +127,7 @@ app.post('/users', function (req, res) {
 	// 	otherProfileImages:["https://www.codeproject.com/KB/aspnet/Protect_files_to_downloas/errordownload.jpg", "https://www.joomunited.com/images/com_droppics/138/WP-file-download.png"]
 	// }
 	var newuser = req.body.newuser;
+	console.log(newuser);
 
 	var downUrls = [];
 	if (newuser['mainProfileImage'] != undefined) {
@@ -149,15 +142,16 @@ app.post('/users', function (req, res) {
 
 	console.log(downUrls);
 	newuser.otherProfileImages = [];
+	newuser.thumbnailImages = [];
 	console.log(downUrls);
-	async.forEach(downUrls, function(downUrl, callback) {
+	async.forEach(downUrls, function (downUrl, callback) {
 		console.log("step1---", downUrl);
 		dotdeli = downUrl.split('.').length;
 		var exten = "jpg";
 		if (dotdeli > 1) {
 			exten = downUrl.split('.')[dotdeli - 1];
 		}
-		
+
 		filename = randomstring.generate(32) + "." + exten
 
 		var options = {
@@ -166,7 +160,7 @@ app.post('/users', function (req, res) {
 		}
 		var newname = __dirname + "/uploads/" + filename;
 		console.log(newname);
-		download(downUrl, options, function(err){
+		download(downUrl, options, function (err) {
 			if (err)
 				callback("download error")
 			else {
@@ -182,17 +176,19 @@ app.post('/users', function (req, res) {
 						file.makePublic().then(function (data) {
 							if (newuser['mainProfileImage'] != undefined && newuser['mainProfileImage'] == downUrl)
 								newuser['mainProfileImage'] = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + filename;
-							else
+							else {
 								newuser['otherProfileImages'].push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + filename);
+								newuser['thumbnailImages'].push("");
+							}
 							callback();
-						}).catch(function(err) {
+						}).catch(function (err) {
 							console.log(err);
 							callback('public error');
 						});
 					}
 				});
 			}
-		}) 
+		})
 	}, function (err) {
 		console.log(newuser);
 		var newuserref = usersRef.push();
@@ -200,8 +196,11 @@ app.post('/users', function (req, res) {
 		newuserref.set(newuser, function (error) {
 			if (error)
 				res.sendStatus(500);
-			else
-				res.send(newuserref.key);
+			else {
+				preferencesRef.child(newuserref.key).set(newpref, function (error) {
+					res.send(newuserref.key);
+				});
+			}
 		});
 	});
 });
@@ -223,31 +222,63 @@ app.get('/users/:fbid', function (req, res) {
 });
 
 //3) UploadFilesForUser (It may be images or videos)
-app.post('/upload/:userid', upload.fields([{ name: 'mainProfileImage', maxCount: 1 }, { name: 'otherProfileImages', maxCount: 5 }]), function (req, res) {
+app.post('/upload/:userid/:type', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 'thumbnailImage', maxCount: 1 }]), function (req, res) {
 	console.log("----------------API------03------------");
 	// var newuser = {
-	// 	age:41,
+	// 	age:40,
 	// 	facebookId:324345345,
-	// 	gender:"male"
+	// 	gender:"male",
+	// 	mainProfileImage:"http://chortle.ccsu.edu/qbasic/AppendixA/000Start.gif",
+	// 	otherProfileImages:["https://www.codeproject.com/KB/aspnet/Protect_files_to_downloas/errordownload.jpg", "https://www.joomunited.com/images/com_droppics/138/WP-file-download.png"]
 	// }
+	var userinfo = {};
+	console.log(req.body);
+	console.log(req.params);
+	console.log("step1");
+	usersRef.child(req.params.userid).once("value", function (snapshot) {
+		console.log("step2");
+		if (snapshot.exists()) {
+			userinfo = snapshot.val()
+			console.log("step21");
+			var upFiles = [];
+			if (req.files != undefined && Object.keys(req.files).indexOf("uploadFile") != -1 && req.files['uploadFile'] != undefined) {
+				console.log("main");
+				upFiles = req.files['uploadFile'];
+			} else {
+				if (req.params.type == "main") {
+					console.log("step22");
+					res.sendStatus(404);
+					return;
+				} else {
+					console.log("step23");
+					if (req.body.oldurl != undefined && userinfo.hasOwnProperty("otherProfileImages")) {
+						var indexToDel = userinfo.otherProfileImages.indexOf(req.body.oldurl)
+						if (indexToDel != -1) {
+							console.log("step24");
+							userinfo.otherProfileImages.splice(indexToDel, 1);
+							if (userinfo.hasOwnProperty("thumbnailImages"))
+								userinfo.thumbnailImages.splice(indexToDel, 1);
+							usersRef.child(req.params.userid).update(userinfo, function (error) {
+								console.log("step25");
+								if (error)
+									res.sendStatus(500)
+								else
+									res.sendStatus(userinfo);
+							})
+						} else
+							res.sendStatus(500);
+					} else
+						res.sendStatus(404);
+				}
+				console.log("step26");
+				return;
+			}
 
-	var upFiles = [];
-	if (req.files['mainProfileImage'] != undefined) {
-		console.log("main");
-		upFiles = req.files['mainProfileImage'];
-	}
+			if (req.files != undefined && Object.keys(req.files).indexOf("thumbnailImage") != -1 && req.files['thumbnailImage'] != undefined) {
+				console.log("other");
+				upFiles = upFiles.concat(req.files['thumbnailImage']);
+			}
 
-	if (req.files['otherProfileImages'] != undefined) {
-		console.log("other");
-		upFiles = upFiles.concat(req.files['otherProfileImages']);
-	}
-
-	usersRef.child(req.params.userid).set(req.body.newuser, function (error) {
-		if (error) {
-			res.status(404).end();
-		} else {
-			newuser = {};
-			newuser.otherProfileImages = [];
 			async.forEach(upFiles, function (upFile, callback) {
 				console.log(upFile);
 				if (fs.statSync(__dirname + "/" + upFile.path).isFile()) {
@@ -264,27 +295,73 @@ app.post('/upload/:userid', upload.fields([{ name: 'mainProfileImage', maxCount:
 						if (err) {
 							console.log("bucket upload error", err);
 							callback();
-
 						} else {
 							console.log("bucket upload success");
 							console.log("step5");
 
 							file.makePublic().then(function (data) {
-								if (upFile.fieldname == "mainProfileImage")
-									newuser.mainProfileImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
-								else
-									newuser.otherProfileImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+								if (req.params.type == "main") {
+									userinfo.mainProfileImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+								} else {
+									console.log("step6");
+									if (!userinfo.hasOwnProperty("otherProfileImages")) {
+										console.log("step7");
+										userinfo.otherProfileImages = [];
+										userinfo.thumbnailImages = [];
+										if (upFile.fieldname == "uploadFile") {
+											userinfo.otherProfileImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+											if (req.files['thumbnailImage'] == undefined)
+												userinfo.thumbnailImages.push("");
+										}
+										else
+											userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+									} else {
+										userinfo.otherProfileImages = userinfo.otherProfileImages;
+										if (!userinfo.hasOwnProperty("thumbnailImages"))
+											userinfo.thumbnailImages = [];
+										else
+											userinfo.thumbnailImages = userinfo.thumbnailImages;
+
+										if (req.body.oldurl == undefined) {
+											console.log("step8");
+											if (upFile.fieldname == "uploadFile") {
+												userinfo.otherProfileImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+												if (req.files['thumbnailImage'] == undefined)
+													userinfo.thumbnailImages.push("");
+											}
+											else
+												userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+
+										} else {
+											console.log(indexToDel);
+											indexToDel = userinfo.otherProfileImages.indexOf(req.body.oldurl);
+											if (indexToDel != -1) {
+												if (upFile.fieldname == "uploadFile") {
+													userinfo.otherProfileImages[indexToDel] = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+													if (req.files['thumbnailImage'] == undefined)
+														userinfo.thumbnailImages[indexToDel] = "";
+												} else
+													userinfo.thumbnailImages[indexToDel] = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+											}
+										}
+									}
+								}
 								callback();
 							});
 						}
 					});
 				};
 			}, function (err) {
-				usersRef.child(req.params.userid).update(newuser, function (error) {
-					res.sendStatus(200);
+				usersRef.child(req.params.userid).update(userinfo, function (error) {
+					if (error)
+						res.sendStatus(500)
+					else
+						res.sendStatus(200);
 				});
 			});
 		}
+		else
+			res.sendStatus(404);
 	});
 });
 
@@ -331,6 +408,15 @@ app.put('/users/:userid', function (req, res) {
 	});
 });
 
+var getUpSuperUserMoment = function (moments) {
+	var superUserId = "WlsuoQxwUB";
+	superusermoments = lodash.filter(moments, { userId: superUserId });
+	newmoments = lodash.reject(moments, { userId: superUserId });
+	newmoments = lodash.concat(superusermoments, newmoments);
+	console.log(newmoments.length)
+	return newmoments;
+}
+
 //7) GetMomentsByUsedId (by default they are sorted 'newest') (userid, [popular, updated], filter)->[moments]
 app.get('/moments/:userid/:sort/:filter', function (req, res) {
 	console.log("----------------API------07------------");
@@ -356,7 +442,7 @@ app.get('/moments/:userid/:sort/:filter', function (req, res) {
 					callback();
 				});
 			}, function (err) {
-				res.send(moments);
+				res.send(getUpSuperUserMoment(moments));
 			});
 		} else {
 			res.send(moments);
@@ -377,21 +463,19 @@ app.get('/moments/:sort/:filter', function (req, res) {
 
 	if (filterstr != "all") {
 		momentImagesRef.orderByChild("passionId").equalTo(filterstr).once("value", function (snapshot) {
-			console.log(snapshot);
 			if (snapshot.exists())
 				moments = lodash.sortBy(snapshot.val(), sortstr).reverse();
 
 			async.forEach(moments, function (moment, callback) {
 				if (moment.hasOwnProperty("userId")) {
 					usersRef.child(moment.userId).once("value", function (snapshot) {
-						console.log(snapshot.val());
 						if (snapshot.exists()) moment.user = snapshot.val();
 						callback();
 					});
 				} else
 					callback();
 			}, function (err) {
-				res.send(moments);
+				res.send(getUpSuperUserMoment(moments));
 			});
 		});
 	} else {
@@ -400,18 +484,18 @@ app.get('/moments/:sort/:filter', function (req, res) {
 				snapshot.forEach(function (moment) {
 					moments.push(moment.val());
 				});
+				moments = moments.reverse();
 				async.forEach(moments, function (moment, callback) {
-					console.log("----moment---------", moment);
 					if (moment.hasOwnProperty("userId")) {
 						usersRef.child(moment.userId).once("value", function (snapshot) {
-							console.log(snapshot.val());
 							if (snapshot.exists()) moment.user = snapshot.val();
 							callback();
 						});
 					} else
 						callback();
 				}, function (err) {
-					res.send(moments);
+					console.log(moments.length)
+					res.send(getUpSuperUserMoment(moments));
 				});
 			}
 		});
@@ -453,7 +537,7 @@ app.get('/matchedmoments/:userid/:sort/:filter', function (req, res) {
 				} else
 					callback();
 			}, function (err) {
-				res.send(arymoments);
+				res.send(getUpSuperUserMoment(arymoments));
 			});
 		});
 
@@ -461,16 +545,16 @@ app.get('/matchedmoments/:userid/:sort/:filter', function (req, res) {
 });
 
 //10) CreateMoment
-app.put('/moments',  upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 'thumbnailImage', maxCount: 1 }]), function (req, res) {
+app.put('/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 'thumbnailImage', maxCount: 1 }]), function (req, res) {
 	console.log("----------------API------10------------");
 	newmoment = req.body.newmoment;
 	// var newmoment = {
 	// 	userId:"Eqg4O5xfFp",
 	// 	readStatus:true
 	// }
-	
+
 	var upFiles = [];
-	
+
 	if (req.files['uploadFile'] != undefined) {
 		console.log("main");
 		upFiles = req.files['uploadFile'];
@@ -558,9 +642,9 @@ app.get('/likemoments/users/:momentid/:userid', function (req, res) {
 				usersRef.child(likerrow.userId).once("value", function (snapshot) {
 					if (snapshot.exists()) {
 						var liker = snapshot.val();
-						getUserStatus(liker.objectId, req.params.userid).then(function(status) {
+						getUserStatus(liker.objectId, req.params.userid).then(function (status) {
 							status1 = status;
-							getUserStatus(req.params.userid, liker.objectId).then(function(status) {
+							getUserStatus(req.params.userid, liker.objectId).then(function (status) {
 								status2 = status;
 								var resstatus = 1;
 								if (status2 == -1)
@@ -572,11 +656,11 @@ app.get('/likemoments/users/:momentid/:userid', function (req, res) {
 								aryuser.push(liker);
 								console.log(liker);
 								callback();
-							}).catch(function(e) {
+							}).catch(function (e) {
 								callback();
 								console.log(e);
 							});
-						}).catch(function(e) {
+						}).catch(function (e) {
 							callback();
 							console.log(e);
 						});
@@ -639,12 +723,12 @@ app.get('/notifications/:userid', function (req, res) {
 //15) GetUser
 app.get('/match/:userid1/:userid2', function (req, res) {
 	console.log("----------------API------15------------");
-	getUserStatus(req.params.userid1, req.params.userid2).then(function(status) {
+	getUserStatus(req.params.userid1, req.params.userid2).then(function (status) {
 		status1 = status;
-		getUserStatus(req.params.userid2, req.params.userid1).then(function(status) {
+		getUserStatus(req.params.userid2, req.params.userid1).then(function (status) {
 			status2 = status;
 			console.log("------status1--", status1, "-----status2---", status2, "------------");
-			usersRef.child(req.params.userid1).once("value", function (snapshot) {
+			usersRef.child(req.params.userid2).once("value", function (snapshot) {
 				if (snapshot.exists()) {
 					var resstatus = 1;
 					if (status2 == -1)
@@ -661,11 +745,11 @@ app.get('/match/:userid1/:userid2', function (req, res) {
 					res.sendStatus(404);
 				}
 			});
-		}).catch(function(e) {
+		}).catch(function (e) {
 			console.log(e);
 			res.sendStatus(404);
 		});
-	}).catch(function(e) {
+	}).catch(function (e) {
 		console.log(e);
 		res.sendStatus(404);
 	});
@@ -847,7 +931,7 @@ var likeunlikeMatch = function (req, res, status) {
 			console.log(curlike);
 			if (curlike.length == 1) {
 				curlike[0].ref.set(appr);
-				getUserStatus(req.params.userid2, req.params.userid1).then(function(status2) {
+				getUserStatus(req.params.userid2, req.params.userid1).then(function (status2) {
 					var mutualStatus = 2;
 					if (status2 == -1)
 						mutualStatus = status + 2;
@@ -857,7 +941,7 @@ var likeunlikeMatch = function (req, res, status) {
 						liker.status = status + 8;
 					console.log(mutualStatus);
 					res.send(mutualStatus + "");
-				}).catch(function(e) {
+				}).catch(function (e) {
 					console.log(e);
 					res.status(500).end();
 				});
@@ -869,7 +953,7 @@ var likeunlikeMatch = function (req, res, status) {
 			if (error)
 				res.status(404).end();
 			else {
-				getUserStatus(req.params.userid2, req.params.userid1).then(function(status2) {
+				getUserStatus(req.params.userid2, req.params.userid1).then(function (status2) {
 					var mutualStatus = 2;
 					if (status2 == -1)
 						mutualStatus = status + 2;
@@ -879,7 +963,7 @@ var likeunlikeMatch = function (req, res, status) {
 						liker.status = status + 8;
 					console.log(mutualStatus);
 					res.send(mutualStatus + "");
-				}).catch(function(e) {
+				}).catch(function (e) {
 					console.log(e);
 					res.status(500).end();
 				});
@@ -899,23 +983,64 @@ app.delete('/match/:userid1/:userid2', function (req, res) {
 	likeunlikeMatch(req, res, 0);
 });
 
+function calculateDistance(lat1, lon1, lat2, lon2) {
+	var R = 3959; // mile
+	var dLat = (lat2 - lat1).toRad();
+	var dLon = (lon2 - lon1).toRad();
+	var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+		Math.cos(lat1.toRad()) * Math.cos(lat2.toRad()) *
+		Math.sin(dLon / 2) * Math.sin(dLon / 2);
+	var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+	var d = R * c;
+	return d;
+}
+
+Number.prototype.toRad = function () {
+	return this * Math.PI / 180;
+}
+
 //23) GetUsersForMatch
 app.get('/approveuserformatch/:userid', function (req, res) {
 	console.log("----------------API------23------------");
-	matchRef.orderByChild("userA").equalTo(req.params.userid).once('value', function (snapshot) {
-		var aryuser = [];
+	usersRef.child(req.params.userid).once("value", function (snapshot) {
 		if (snapshot.exists()) {
-			async.forEach(snapshot.val(), function (matchrow, callback) {
-				usersRef.child(matchrow.userB).once("value", function (snapshot) {
-					console.log(snapshot.val());
-					if (snapshot.exists()) aryuser.push(snapshot.val());
-					callback();
+			curuser = snapshot.val();
+			preferencesRef.child(req.params.userid).once("value", function (snapshot) {
+				if (!snapshot.exists())
+					pref = snapshot.val();
+				else
+					pref = newpref;
+				if (!pref.hasOwnProperty("searchLocation")) pref.searchLocation = curuser.currentLocation;
+				distance = pref.maxSearchDistance;
+				maxage = pref.upperAgeLimit;
+				minage = pref.lowerAgeLimit;
+				searchlocation = pref.searchLocation;
+
+
+				matchRef.orderByChild("userB").equalTo(req.params.userid).once('value', function (snapshot) {
+					var aryuser = [];
+					if (snapshot.exists()) {
+						async.forEach(snapshot.val(), function (matchrow, callback) {
+							usersRef.child(matchrow.userA).once("value", function (snapshot) {
+								console.log(snapshot.val());
+								if (snapshot.exists()) {
+									otheruser = snapshot.val();
+									if (otheruser.age >= minage && otheruser.age <= maxage && pref.genders.indexOf(otheruser.gender) != -1 &&
+										calculateDistance(otheruser.currentLocation.latitide, otheruser.currentLocation.longitude, searchLocation.latitude, searchLocation.longitude) < distance)
+										aryuser.push(snapshot.val());								
+								}
+								callback();
+							});
+						}, function (err) {
+							res.json(aryuser);
+						});
+					} else
+						res.send(aryuser);
 				});
-			}, function (err) {
-				res.json(aryuser);
 			});
+
 		} else
-			res.send(aryuser);
+			res.sendStatus(404);
 	});
 });
 
@@ -1012,7 +1137,7 @@ app.delete('/countries/:userid', function (req, res) {
 
 //29) Get a moment by id
 app.get('/moments/:momentid', function (req, res) {
-	console.log("----------------API------28------------");
+	console.log("----------------API------29------------");
 	momentImagesRef.child(req.params.momentid).once("value", function (snapshot) {
 		if (snapshot.exists())
 			res.send(snapshot.val());
@@ -1021,6 +1146,16 @@ app.get('/moments/:momentid', function (req, res) {
 	});
 });
 
+//30 Update moment
+app.put('/moments/:momentid', function (req, res) {
+	console.log("----------------API------30------------");
+	momentImagesRef.child(req.params.momentid).update(req.body.newmoment, function (error) {
+		if (error)
+			res.sendStatus(404);
+		else
+			res.sendStatus(200);
+	});
+});
 
 
 
