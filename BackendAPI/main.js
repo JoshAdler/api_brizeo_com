@@ -9,6 +9,8 @@ var upload = multer({ dest: 'uploads/' });
 var fs = require('fs');
 var download = require('download-file');
 var randomstring = require("randomstring");
+var FB = require('facebook-node');
+FB.setApiVersion("v2.8");
 
 
 
@@ -1157,8 +1159,27 @@ app.put('/moments/:momentid', function (req, res) {
 	});
 });
 
-
-
+//31 mutual friends api
+app.get('/mutual_friends/:otherUserId/:accessToken',function(req,appRes){
+	var accessToken=req.params.accessToken;
+	var otherUserId=req.params.otherUserId;
+	FB.setAccessToken(accessToken);
+	FB.api(otherUserId+'?fields=context.fields(all_mutual_friends)', function (res) {
+		  if(!res || res.error) {
+		   console.log(!res ? 'error occurred' : res.error);
+		   return;
+		  }
+		  var contextId=res.context.id;
+			if(contextId){
+			  FB.api(contextId+'/all_mutual_friends',function(response){
+			  	mutual_friends=response;
+			  	appRes.json(mutual_friends.data);
+			  });
+			}else{
+				appRes.json({'error':res,'code':200});
+			}
+	});
+})
 
 
 
