@@ -9,10 +9,15 @@ var upload = multer({ dest: 'uploads/' });
 var fs = require('fs');
 var download = require('download-file');
 var randomstring = require("randomstring");
+var FCM = require('fcm-push');
+var Thumbnail = require('thumbnail');
 var FB = require('facebook-node');
+var gm = require("gm");
+var jwt = require('jsonwebtoken');
+
+
+
 FB.setApiVersion("v2.8");
-
-
 
 var serviceAccount = require("./brizeo-7571c-firebase-adminsdk.json");
 //var serviceAccount = require("./fir-test1-7cb44-firebase-adminsdk-4mixq-144aafe9a8.json");
@@ -20,9 +25,51 @@ var app = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
+
+
+var secretkey = "SeCrEtKeYfOrHaShInG";
+const authMiddleware = (req, res, next) => {
+    // read the token from header or url 
+    const token = req.headers['x-access-token'] || req.query.token
+
+    // token does not exist
+    if(!token) {
+        return res.status(403).json({
+            success: false,
+            message: 'not logged in'
+        })
+    }
+
+	try {
+		var decoded = jwt.verify(token,secretkey);
+        req.decoded = decoded
+        next()
+	} catch(err){
+        res.status(403).json({
+            success: false,
+            message: error.message
+        })
+	}
+}
+
+function makeJWT(username) {
+	var token = jwt.sign(
+		{
+			username: username
+		}, 
+		secretkey, 
+		{
+			expiresIn: '14d'
+		});
+	return token;
+}
+
 //app.use(express.bodyParser({limit: '50mb'}));
 //app.use(bodyParser.json({limit: '50mb'}));
 //app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
+app.use('/customer', authMiddleware);
+
 
 firebase.initializeApp({
 	credential: firebase.credential.cert(serviceAccount),
@@ -60,6 +107,12 @@ var mailOptions = {
 
 
 
+
+var thumbnail = new Thumbnail('./uploads', './thumbnails');
+
+
+
+
 var db = firebase.database();
 
 var usersRef = db.ref("/User");
@@ -69,6 +122,8 @@ var momentImageLikesRef = db.ref("/MomentImageLikes");
 var passionsRef = db.ref("/Passions");
 var matchRef = db.ref("/Match");
 var notificationRef = db.ref("/Notifications");
+var eventsRef = db.ref("/Events");
+var testsRef = db.ref("/MyRef");
 
 var res200 = {
 	status: 200,
@@ -90,6 +145,8 @@ var newpref = {
 	upperAgeLimit: 85,
 	maxSearchDistance: 100
 };
+
+var superUserId = "WlsuoQxwUB";
 
 var getUserStatus = function (userid1, userid2) {
 	return new Promise(function (resolve, reject) {
@@ -113,33 +170,143 @@ var getUserStatus = function (userid1, userid2) {
 	});
 }
 
+var registerNotification = function (sendUser, receiveUser, type, id) {
+	var newnotification = {
+		sendUser: sendUser,
+		receiveUser: receiveUser,
+		pushType: type,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
+	}
+
+	usersRef.child(sendUser).once("value", function (snapshot) {
+		if (!snapshot.exists()) return;
+		var sendtext = "";
+		var soundType="";
+		if (type == "newmatch") {
+			newnotification.newmatchid = id;
+			sendtext = snapshot.val().displayName + " matched you.";
+			soundType="sound_matches.wav";
+		} else if (type == "momentslike") {
+			newnotification.momentsid = id;
+			sendtext = snapshot.val().displayName + " liked your moment."
+			soundType="sound_likes.wav";
+		}
+
+		console.log(newnotification);
+		newnotiref = notificationRef.push();
+		newnotification.objectId = newnotiref.key;
+		newnotiref.set(newnotification);
+
+		usersRef.child(receiveUser).once("value", function (snapshot) {
+			console.log('step1');
+			if (!snapshot.exists()) return;
+			user = snapshot.val();
+			console.log('step2');
+			preferencesRef.child(receiveUser).once("value", function (snapshot) {
+				console.log('step3');
+				if (snapshot.exists()) {
+					if (type == "newmatch" && snapshot.val().isNotificationsNewMatchesOn == false || type == "momentslike" && snapshot.val().isNotificationsMomentsLikesOn == false) {
+						return;
+					}
+				}
+				console.log('step4');
+				if (user.hasOwnProperty("deviceToken")) {
+					//add sound in notification: i.e notification.body, sound
+					var message = {
+						to: user.deviceToken, // required fill with device token or topics
+						data: {
+							userid: sendUser,
+							type: type
+						},
+						notification: {
+							body: sendtext,
+							sound:soundType
+						}
+					};
+					sendPushNotification(message)
+				}
+			});
+
+		});
+	});
+}
+
+var sendPushNotification = function (message) {
+	console.log(message)
+	var serverKey = "AIzaSyC2Db73kmVDNTWbwpWgQOmfxRWy1tTo7S0";
+	var fcm = new FCM(serverKey);
+
+	//callback style
+	fcm.send(message, function (err, response) {
+		if (err) {
+			console.log(err);
+			console.log("Something has gone wrong!");
+		} else {
+			console.log("Successfully sent with response: ", response);
+		}
+	});
+	/*
+		fcm.send(message)
+		.then(function(response){
+			console.log("Successfully sent with response: ", response);
+		})
+		.catch(function(err){
+			console.log("Something has gone wrong!");
+			console.error(err);
+		})
+	*/
+}
+
 app.get('/test', function (req, res) {
-	res.send("kkk");
+	type = "newmatch";
+			preferencesRef.child("-Kg-Y1EQa5uBpZHr70oi1").once("value", function (snapshot) {
+				console.log('step3');
+				console.log(snapshot.val().isNotificationsNewMatchesOn);
+				if (snapshot.exists()) {
+					if (type == "newmatch" && snapshot.val().isNotificationsNewMatchesOn == false || type == "momentslike" && snapshot.val().isNotificationsMomentsLikesOn == false) {
+						return;
+					}
+				}
+				res.sendStatus(200);
+			});
 })
 
+app.get('/test1', function (req, res) {
+	res.sendStatus(200);
+})
+
+function getFileExtension(fileurl) {
+	var arr = fileurl.split("?");
+	arr = arr[0].split("#");
+	url = arr[0];
+	return (url.indexOf(".") < 0) ? "" : url.substring(url.lastIndexOf(".") + 1, url.length);
+}
 
 //1) SignUp
 app.post('/users', function (req, res) {
 	console.log("----------------API------01------------");
 	// var newuser = {
-	// 	age:40,
-	// 	facebookId:324345345,
-	// 	gender:"male",
-	// 	mainProfileImage:"http://chortle.ccsu.edu/qbasic/AppendixA/000Start.gif",
-	// 	otherProfileImages:["https://www.codeproject.com/KB/aspnet/Protect_files_to_downloas/errordownload.jpg", "https://www.joomunited.com/images/com_droppics/138/WP-file-download.png"]
+	// 	age: 40,
+	// 	facebookId: 324345345,
+	// 	gender: "male",
+	// 	mainProfileImage: "http://chortle.ccsu.edu/qbasic/AppendixA/000Start.gif",
+	// 	otherProfileImages: ["https://www.codeproject.com/KB/aspnet/Protect_files_to_downloas/errordownload.jpg", "https://www.joomunited.com/images/com_droppics/138/WP-file-download.png"]
 	// }
 	var newuser = req.body.newuser;
+	console.log("----------step1----------", newuser);
+	//	var newuser = JSON.parse(JSON.stringify(req.body.newuser));
 	console.log(newuser);
 
 	var downUrls = [];
 	if (newuser['mainProfileImage'] != undefined) {
 		console.log("main");
-		downUrls.push(newuser['mainProfileImage']);
+		downUrls.push(newuser.mainProfileImage);
 	}
 
 	if (newuser['otherProfileImages'] != undefined) {
 		console.log("other");
-		downUrls = downUrls.concat(newuser['otherProfileImages']);
+		downUrls = downUrls.concat(newuser.otherProfileImages);
 	}
 
 	console.log(downUrls);
@@ -148,11 +315,7 @@ app.post('/users', function (req, res) {
 	console.log(downUrls);
 	async.forEach(downUrls, function (downUrl, callback) {
 		console.log("step1---", downUrl);
-		dotdeli = downUrl.split('.').length;
-		var exten = "jpg";
-		if (dotdeli > 1) {
-			exten = downUrl.split('.')[dotdeli - 1];
-		}
+		var exten = getFileExtension(downUrl);
 
 		filename = randomstring.generate(32) + "." + exten
 
@@ -177,10 +340,10 @@ app.post('/users', function (req, res) {
 
 						file.makePublic().then(function (data) {
 							if (newuser['mainProfileImage'] != undefined && newuser['mainProfileImage'] == downUrl)
-								newuser['mainProfileImage'] = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + filename;
+								newuser.mainProfileImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
 							else {
-								newuser['otherProfileImages'].push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + filename);
-								newuser['thumbnailImages'].push("");
+								newuser.otherProfileImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+								newuser.thumbnailImages.push("");
 							}
 							callback();
 						}).catch(function (err) {
@@ -192,18 +355,38 @@ app.post('/users', function (req, res) {
 			}
 		})
 	}, function (err) {
+		console.log("---err----", err);
+		//		usersRef.push(newuser);
 		console.log(newuser);
-		var newuserref = usersRef.push();
+		newuserref = usersRef.push();
 		newuser.objectId = newuserref.key;
-		newuserref.set(newuser, function (error) {
+		console.log("-----------key-----------", newuserref.key);
+		usersRef.child(newuserref.key).set(newuser, function (error) {
 			if (error)
 				res.sendStatus(500);
 			else {
+				superUserMatch1 = {
+					status: 1,
+					userA: superUserId,
+					userB: newuserref.key
+				}
+				superUserMatch2 = {
+					status: 1,
+					userA: newuserref.key,
+					userB: superUserId
+				}
+
+				matchRef.push(superUserMatch1);
+				matchRef.push(superUserMatch2);
 				preferencesRef.child(newuserref.key).set(newpref, function (error) {
-					res.send(newuserref.key);
+					res.send(newuser);
 				});
 			}
+
 		});
+		//newref.set(newuser);
+		// newuser = {};
+		// newuser.objectId = newuserref.key;
 	});
 });
 
@@ -214,7 +397,9 @@ app.get('/users/:fbid', function (req, res) {
 		console.log(snapshot.val());
 		if (snapshot.exists()) {
 			for (key in snapshot.val()) {
-				res.send(snapshot.val()[key]);
+				var userinfo = snapshot.val()[key];
+				userinfo.jwt = makeJWT(key);
+				res.send(userinfo);
 				return;
 			}
 		} else {
@@ -223,16 +408,27 @@ app.get('/users/:fbid', function (req, res) {
 	});
 });
 
+function checkThumbnailBugs(userinfo) {
+	if (userinfo.hasOwnProperty("otherProfileImages")) {
+		var len = userinfo.otherProfileImages.length;
+		if (!userinfo.hasOwnProperty("thumbnailImages") || len > userinfo.thumbnailImages.length) {
+			if (!userinfo.hasOwnProperty("thumbnailImages")) {
+				userinfo.thumbnailImages = [];
+				lenthum = 0;
+			}
+			else
+				lenthum = userinfo.thumbnailImages.length;
+
+			for (i = 0; i < len - lenthum; i++) {
+				userinfo.thumbnailImages.push("");
+			}
+		}
+	}
+}
+
 //3) UploadFilesForUser (It may be images or videos)
 app.post('/upload/:userid/:type', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 'thumbnailImage', maxCount: 1 }]), function (req, res) {
 	console.log("----------------API------03------------");
-	// var newuser = {
-	// 	age:40,
-	// 	facebookId:324345345,
-	// 	gender:"male",
-	// 	mainProfileImage:"http://chortle.ccsu.edu/qbasic/AppendixA/000Start.gif",
-	// 	otherProfileImages:["https://www.codeproject.com/KB/aspnet/Protect_files_to_downloas/errordownload.jpg", "https://www.joomunited.com/images/com_droppics/138/WP-file-download.png"]
-	// }
 	var userinfo = {};
 	console.log(req.body);
 	console.log(req.params);
@@ -265,7 +461,7 @@ app.post('/upload/:userid/:type', upload.fields([{ name: 'uploadFile', maxCount:
 								if (error)
 									res.sendStatus(500)
 								else
-									res.sendStatus(userinfo);
+									res.send(userinfo);
 							})
 						} else
 							res.sendStatus(500);
@@ -284,14 +480,10 @@ app.post('/upload/:userid/:type', upload.fields([{ name: 'uploadFile', maxCount:
 			async.forEach(upFiles, function (upFile, callback) {
 				console.log(upFile);
 				if (fs.statSync(__dirname + "/" + upFile.path).isFile()) {
-					dotdeli = upFile.originalname.split('.').length;
-					var exten = "jpg";
-					if (dotdeli > 1) {
-						exten = upFile.originalname.split('.')[dotdeli - 1];
-					}
+					var exten = getFileExtension(upFile.originalname);
 					console.log("step3");
 					var newname = __dirname + "/" + upFile.path + "." + exten;
-					fs.rename(__dirname + "/" + upFile.path, newname);
+					fs.renameSync(__dirname + "/" + upFile.path, newname);
 					console.log("step4");
 					bucket.upload(newname, function (err, file) {
 						if (err) {
@@ -304,6 +496,27 @@ app.post('/upload/:userid/:type', upload.fields([{ name: 'uploadFile', maxCount:
 							file.makePublic().then(function (data) {
 								if (req.params.type == "main") {
 									userinfo.mainProfileImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+									thumbnail.ensureThumbnail(upFile.filename + "." + exten, 1000, null, function (err, filename) {
+										console.log("----err----", err);
+										if (!err) {
+											console.log(filename);
+											bucket.upload("./thumbnails/" + filename, function (err, file) {
+												if (err) {
+													console.log("thumbnail bucket upload error", err);
+													callback("upload error");
+												} else {
+													console.log("thumbnail bucket upload success");
+													console.log("step52");
+													file.makePublic().then(function (data) {
+														userinfo.mainthumbnailImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+														callback();
+													});
+												}
+											});
+
+										} else
+											callback();
+									});
 								} else {
 									console.log("step6");
 									if (!userinfo.hasOwnProperty("otherProfileImages")) {
@@ -312,27 +525,72 @@ app.post('/upload/:userid/:type', upload.fields([{ name: 'uploadFile', maxCount:
 										userinfo.thumbnailImages = [];
 										if (upFile.fieldname == "uploadFile") {
 											userinfo.otherProfileImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
-											if (req.files['thumbnailImage'] == undefined)
-												userinfo.thumbnailImages.push("");
+											if (req.files['thumbnailImage'] == undefined) {
+												thumbnail.ensureThumbnail(upFile.filename + "." + exten, 400, null, function (err, filename) {
+													console.log("----err----", err);
+													if (!err) {
+														console.log(filename);
+														bucket.upload("./thumbnails/" + filename, function (err, file) {
+															if (err) {
+																console.log("thumbnail bucket upload error", err);
+																callback("upload error");
+															} else {
+																console.log("thumbnail bucket upload success");
+																console.log("step52");
+																file.makePublic().then(function (data) {
+																	userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+																	callback();
+																});
+															}
+														});
+
+													} else
+														callback();
+												});
+											} else
+												callback();
 										}
-										else
+										else {
 											userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+											callback();
+										}
 									} else {
-										userinfo.otherProfileImages = userinfo.otherProfileImages;
 										if (!userinfo.hasOwnProperty("thumbnailImages"))
 											userinfo.thumbnailImages = [];
-										else
-											userinfo.thumbnailImages = userinfo.thumbnailImages;
 
 										if (req.body.oldurl == undefined) {
 											console.log("step8");
 											if (upFile.fieldname == "uploadFile") {
 												userinfo.otherProfileImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
-												if (req.files['thumbnailImage'] == undefined)
-													userinfo.thumbnailImages.push("");
+												if (req.files['thumbnailImage'] == undefined) {
+													thumbnail.ensureThumbnail(upFile.filename + "." + exten, 400, null, function (err, filename) {
+														console.log("----err----", err);
+														if (!err) {
+															console.log(filename);
+															bucket.upload("./thumbnails/" + filename, function (err, file) {
+																if (err) {
+																	console.log("thumbnail bucket upload error", err);
+																	callback("upload error");
+																} else {
+																	console.log("thumbnail bucket upload success");
+																	console.log("step52");
+																	file.makePublic().then(function (data) {
+																		userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+																		callback();
+																	});
+																}
+															});
+
+														} else
+															callback();
+													});
+												} else
+													callback();
 											}
-											else
+											else {
 												userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+												callback();
+											}
 
 										} else {
 											console.log(indexToDel);
@@ -340,15 +598,38 @@ app.post('/upload/:userid/:type', upload.fields([{ name: 'uploadFile', maxCount:
 											if (indexToDel != -1) {
 												if (upFile.fieldname == "uploadFile") {
 													userinfo.otherProfileImages[indexToDel] = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
-													if (req.files['thumbnailImage'] == undefined)
-														userinfo.thumbnailImages[indexToDel] = "";
-												} else
+													if (req.files['thumbnailImage'] == undefined) {
+														thumbnail.ensureThumbnail(upFile.filename + "." + exten, 400, null, function (err, filename) {
+															console.log("----err----", err);
+															if (!err) {
+																console.log(filename);
+																bucket.upload("./thumbnails/" + filename, function (err, file) {
+																	if (err) {
+																		console.log("thumbnail bucket upload error", err);
+																		callback("upload error");
+																	} else {
+																		console.log("thumbnail bucket upload success");
+																		console.log("step52");
+																		file.makePublic().then(function (data) {
+																			userinfo.thumbnailImages[indexToDel] = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+																			callback();
+																		});
+																	}
+																});
+
+															} else
+																callback();
+														});
+													} else
+														callback();
+												} else {
 													userinfo.thumbnailImages[indexToDel] = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+													callback();
+												}
 											}
 										}
 									}
 								}
-								callback();
 							});
 						}
 					});
@@ -358,7 +639,7 @@ app.post('/upload/:userid/:type', upload.fields([{ name: 'uploadFile', maxCount:
 					if (error)
 						res.sendStatus(500)
 					else
-						res.sendStatus(200);
+						res.send(userinfo);
 				});
 			});
 		}
@@ -401,6 +682,10 @@ app.put('/preferences/:userid', function (req, res) {
 //6) updateUserInfo
 app.put('/users/:userid', function (req, res) {
 	console.log("----------------API------06------------");
+	newuser = req.body.newuser;
+	console.log(req.params.userid);
+	console.log(newuser);
+	//	checkThumbnailBugs(newuser);
 	usersRef.child(req.params.userid).set(req.body.newuser, function (error) {
 		if (error) {
 			res.status(404).end();
@@ -411,7 +696,6 @@ app.put('/users/:userid', function (req, res) {
 });
 
 var getUpSuperUserMoment = function (moments) {
-	var superUserId = "WlsuoQxwUB";
 	superusermoments = lodash.filter(moments, { userId: superUserId });
 	newmoments = lodash.reject(moments, { userId: superUserId });
 	newmoments = lodash.concat(superusermoments, newmoments);
@@ -422,29 +706,29 @@ var getUpSuperUserMoment = function (moments) {
 //7) GetMomentsByUsedId (by default they are sorted 'newest') (userid, [popular, updated], filter)->[moments]
 app.get('/moments/:userid/:sort/:filter', function (req, res) {
 	console.log("----------------API------07------------");
+	console.log(req.headers['x-access-token']);
 	var sortstr = "updatedAt";
 	if (req.params.sort == "popular") {
 		sortstr = "numberOfLikes";
 	}
 	var filterstr = req.params.filter;
 	momentImagesRef.orderByChild("userId").equalTo(req.params.userid).once("value", function (snapshot) {
-		console.log(snapshot.val());
 		var moments = [];
 		if (snapshot.exists()) {
 			moments = snapshot.val();
+			console.log(moments);
 			if (filterstr != "all")
 				moments = lodash.filter(moments, { passionId: filterstr });
 			moments = lodash.sortBy(moments, sortstr).reverse();
+			console.log(moments);
 
-			async.forEach(moments, function (moment, callback) {
-				console.log("----moment---------", moment);
-				usersRef.child(moment.userId).once("value", function (snapshot) {
-					console.log(snapshot.val());
-					if (snapshot.exists()) moment.user = snapshot.val();
-					callback();
-				});
-			}, function (err) {
-				res.send(getUpSuperUserMoment(moments));
+			usersRef.child(req.params.userid).once("value", function (snapshot) {
+				if (snapshot.exists()) {
+					moments.forEach(function (moment) {
+						moment.user = snapshot.val();
+					});
+				}
+				res.send(moments)
 			});
 		} else {
 			res.send(moments);
@@ -456,6 +740,7 @@ app.get('/moments/:userid/:sort/:filter', function (req, res) {
 //8) GetAllMoments (we can combine this and the previous method in one)
 app.get('/moments/:sort/:filter', function (req, res) {
 	console.log("----------------API------08------------");
+	console.log(req.headers['x-access-token']);
 	var sortstr = "updatedAt";
 	if (req.params.sort == "popular") {
 		sortstr = "numberOfLikes";
@@ -477,7 +762,10 @@ app.get('/moments/:sort/:filter', function (req, res) {
 				} else
 					callback();
 			}, function (err) {
-				res.send(getUpSuperUserMoment(moments));
+				if (req.params.sort == "popular")
+					res.send(getUpSuperUserMoment(moments));
+				else
+					res.send(moments);
 			});
 		});
 	} else {
@@ -487,6 +775,7 @@ app.get('/moments/:sort/:filter', function (req, res) {
 					moments.push(moment.val());
 				});
 				moments = moments.reverse();
+
 				async.forEach(moments, function (moment, callback) {
 					if (moment.hasOwnProperty("userId")) {
 						usersRef.child(moment.userId).once("value", function (snapshot) {
@@ -497,7 +786,10 @@ app.get('/moments/:sort/:filter', function (req, res) {
 						callback();
 				}, function (err) {
 					console.log(moments.length)
-					res.send(getUpSuperUserMoment(moments));
+					if (req.params.sort == "popular")
+						res.send(getUpSuperUserMoment(moments));
+					else
+						res.send(moments);
 				});
 			}
 		});
@@ -507,6 +799,7 @@ app.get('/moments/:sort/:filter', function (req, res) {
 //9) GetMatchedMomentsByUserId
 app.get('/matchedmoments/:userid/:sort/:filter', function (req, res) {
 	console.log("----------------API------09------------");
+	console.log(req.headers['x-access-token']);
 	var sortstr = "updatedAt";
 	if (req.params.sort == "popular") {
 		sortstr = "numberOfLikes";
@@ -539,7 +832,7 @@ app.get('/matchedmoments/:userid/:sort/:filter', function (req, res) {
 				} else
 					callback();
 			}, function (err) {
-				res.send(getUpSuperUserMoment(arymoments));
+				res.send(arymoments);
 			});
 		});
 
@@ -549,11 +842,13 @@ app.get('/matchedmoments/:userid/:sort/:filter', function (req, res) {
 //10) CreateMoment
 app.put('/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 'thumbnailImage', maxCount: 1 }]), function (req, res) {
 	console.log("----------------API------10------------");
-	newmoment = req.body.newmoment;
 	// var newmoment = {
-	// 	userId:"Eqg4O5xfFp",
-	// 	readStatus:true
+	// 	userId: "Eqg4O5xfFp",
+	// 	readStatus: true
 	// }
+
+	newmoment = req.body.newmoment;
+	newmoment.numberOfLikes = 0;
 
 	var upFiles = [];
 
@@ -570,16 +865,13 @@ app.put('/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 
 	async.forEach(upFiles, function (upFile, callback) {
 		console.log(upFile);
 		if (fs.statSync(__dirname + "/" + upFile.path).isFile()) {
-			dotdeli = upFile.originalname.split('.').length;
-			var exten = "jpg";
-			if (dotdeli > 1) {
-				exten = upFile.originalname.split('.')[dotdeli - 1];
-			}
+			var exten = getFileExtension(upFile.originalname);
 			console.log("step3");
 			var newname = __dirname + "/" + upFile.path + "." + exten;
-			fs.rename(__dirname + "/" + upFile.path, newname);
+			fs.renameSync(__dirname + "/" + upFile.path, newname);
 			console.log("step4");
 			bucket.upload(newname, function (err, file) {
+				console.log("----------file-------", file.name);
 				if (err) {
 					console.log("bucket upload error", err);
 					callback("upload error");
@@ -588,11 +880,37 @@ app.put('/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 
 					console.log("step5");
 
 					file.makePublic().then(function (data) {
-						if (upFile.fieldname == "uploadFile")
+						if (upFile.fieldname == "uploadFile") {
 							newmoment.momentsUploadImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
-						else
+							if (req.files['thumbnailImage'] == undefined) {
+								console.log("step51")
+								thumbnail.ensureThumbnail(upFile.filename + "." + exten, 1000, null, function (err, filename) {
+									console.log("----err----", err);
+									if (!err) {
+										console.log(filename);
+										bucket.upload("./thumbnails/" + filename, function (err, file) {
+											if (err) {
+												console.log("thumbnail bucket upload error", err);
+												callback("upload error");
+											} else {
+												console.log("thumbnail bucket upload success");
+												console.log("step52");
+												file.makePublic().then(function (data) {
+													newmoment.thumbnailImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+													callback();
+												});
+											}
+										});
+
+									} else
+										callback();
+								});
+							} else
+								callback();
+						} else {
 							newmoment.thumbnailImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
-						callback();
+							callback();
+						}
 					});
 				}
 			});
@@ -607,6 +925,7 @@ app.put('/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 
 		}
 		newmomentref = momentImagesRef.push();
 		newmoment.objectId = newmomentref.key;
+		newmoment.createdAt = new Date().toISOString();
 		newmomentref.set(newmoment, function (error) {
 			if (error) {
 				res.status(500).end();
@@ -621,7 +940,6 @@ app.put('/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 
 app.get('/passions', function (req, res) {
 	console.log("----------------API------11------------");
 	passionsRef.once("value", function (snapshot) {
-		console.log(snapshot.val());
 		if (snapshot.exists()) {
 			res.send(snapshot.val());
 		} else {
@@ -648,13 +966,7 @@ app.get('/likemoments/users/:momentid/:userid', function (req, res) {
 							status1 = status;
 							getUserStatus(req.params.userid, liker.objectId).then(function (status) {
 								status2 = status;
-								var resstatus = 1;
-								if (status2 == -1)
-									liker.status = status1 + 2;
-								else if (status2 == 0)
-									liker.status = status1 + 5;
-								else if (status2 == 1)
-									liker.status = status1 + 8;
+								var resstatus = status1 + (status2 + 1) * 3 + 2;
 								aryuser.push(liker);
 								console.log(liker);
 								callback();
@@ -714,10 +1026,31 @@ app.post('/reportmoment/:momentid/:userid', function (req, res) {
 app.get('/notifications/:userid', function (req, res) {
 	console.log("----------------API------14------------");
 	notificationRef.orderByChild("receiveUser").equalTo(req.params.userid).once('value', function (snapshot) {
+		var arynotification = []
 		if (snapshot.exists()) {
-			res.send(snapshot.val());
+			notifications = snapshot.val();
+			console.log(notifications)
+
+			async.forEach(notifications, function (notification, callback) {
+				arynotification.push(notification);
+				usersRef.child(notification.sendUser).once("value", function (snapshot) {
+					if (snapshot.exists()) notification.user = snapshot.val();
+					if (notification.pushType == "momentslike") {
+						momentImagesRef.child(notification.momentsid).once("value", function (snapshot) {
+							if (snapshot.exists()) {
+								notification.moment = snapshot.val();
+							}
+							callback();
+						});
+					} else
+						callback();
+				});
+			}, function (err) {
+				arynotification = lodash.sortBy(arynotification, "updatedAt").reverse();
+				res.send(arynotification);
+			});
 		} else
-			res.send([]);
+			res.send(arynotification);
 	});
 
 });
@@ -732,13 +1065,7 @@ app.get('/match/:userid1/:userid2', function (req, res) {
 			console.log("------status1--", status1, "-----status2---", status2, "------------");
 			usersRef.child(req.params.userid2).once("value", function (snapshot) {
 				if (snapshot.exists()) {
-					var resstatus = 1;
-					if (status2 == -1)
-						resstatus = status1 + 2;
-					else if (status2 == 0)
-						resstatus = status1 + 5;
-					else if (status2 == 1)
-						resstatus = status1 + 8;
+					var resstatus = status1 + (status2 + 1) * 3 + 2;
 					var user = snapshot.val();
 					console.log(user);
 					user.status = resstatus;
@@ -772,8 +1099,11 @@ app.put('/likemoments/:userid/:momentid', function (req, res) {
 				console.log("-----------curlike--------", curlike, "------------------------");
 				momentImagesRef.child(req.params.momentid).once("value", function (snapshot) {
 					console.log(snapshot.val());
-					if (snapshot.exists())
-						res.send(snapshot.val());
+					if (snapshot.exists()) {
+						moment = snapshot.val();
+						registerNotification(req.params.userid, moment.userId, "momentslike", req.params.momentid);
+						res.send(moment);
+					}
 					else
 						res.status(404).end();
 				});
@@ -796,6 +1126,7 @@ app.put('/likemoments/:userid/:momentid', function (req, res) {
 						moment.numberOfLikes = Number(moment.numberOfLikes) + 1;
 						moment.likedBycurrentUser.push(req.params.userid);
 						momentImagesRef.child(req.params.momentid).set(moment);
+						registerNotification(req.params.userid, moment.userId, "momentslike", req.params.momentid)
 						res.send(moment);
 					} else
 						res.status(404).end();
@@ -855,8 +1186,7 @@ app.delete('/moments/:userid/:momentid', function (req, res) {
 app.post('/reportuser/:userid1/:userid2', function (req, res) {
 	console.log("----------------API------19------------");
 	var messageText = "";
-	var date = new Date();
-	var currenttime = date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate() + " " + date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
+	var currenttime = new Date().toISOString();
 	usersRef.child(req.params.userid1).once("value", function (snapshot) {
 		if (snapshot.exists()) {
 			messageText = "User mail : " + snapshot.val().objectId + ", Name : " + snapshot.val().displayName;
@@ -887,7 +1217,7 @@ app.post('/reportuser/:userid1/:userid2', function (req, res) {
 app.post('/downloadevent/:userid1/:times', function (req, res) {
 	console.log("----------------API------20------------");
 	var messageText = "";
-	var date = new Date();
+	var date = new Date().toISOString();
 	var currenttime = date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate() + " " + date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
 	usersRef.child(req.params.userid1).once("value", function (snapshot) {
 		if (snapshot.exists()) {
@@ -934,14 +1264,13 @@ var likeunlikeMatch = function (req, res, status) {
 			if (curlike.length == 1) {
 				curlike[0].ref.set(appr);
 				getUserStatus(req.params.userid2, req.params.userid1).then(function (status2) {
-					var mutualStatus = 2;
-					if (status2 == -1)
-						mutualStatus = status + 2;
-					else if (status2 == 0)
-						mutualStatus = status + 5;
-					else if (status2 == 1)
-						liker.status = status + 8;
+					var mutualStatus = status + (status2 + 1) * 3 + 2;
+					// if (status2 == -1) mutualStatus = status + 2;
+					// else if (status2 == 0) mutualStatus = status + 5;
+					// else if (status2 == 1) mutualStatus = status + 8;
 					console.log(mutualStatus);
+					if (mutualStatus == 9)
+						registerNotification(req.params.userid1, req.params.userid2, "newmatch", curlike[0].ref.key)
 					res.send(mutualStatus + "");
 				}).catch(function (e) {
 					console.log(e);
@@ -951,19 +1280,16 @@ var likeunlikeMatch = function (req, res, status) {
 			}
 		}
 
-		matchRef.push(appr, function (error) {
+		newmatchref = matchRef.push();
+		newmatchref.set(appr, function (error) {
 			if (error)
 				res.status(404).end();
 			else {
 				getUserStatus(req.params.userid2, req.params.userid1).then(function (status2) {
-					var mutualStatus = 2;
-					if (status2 == -1)
-						mutualStatus = status + 2;
-					else if (status2 == 0)
-						mutualStatus = status + 5;
-					else if (status2 == 1)
-						liker.status = status + 8;
+					var mutualStatus = status + (status2 + 1) * 3 + 2;
 					console.log(mutualStatus);
+					if (mutualStatus == 9)
+						registerNotification(req.params.userid1, req.params.userid2, "newmatch", newmatchref.key)
 					res.send(mutualStatus + "");
 				}).catch(function (e) {
 					console.log(e);
@@ -985,7 +1311,15 @@ app.delete('/match/:userid1/:userid2', function (req, res) {
 	likeunlikeMatch(req, res, 0);
 });
 
+Number.prototype.toRad = function () {
+	return this * Math.PI / 180;
+}
+
 function calculateDistance(lat1, lon1, lat2, lon2) {
+	lat1 = Number(lat1);
+	lon1 = Number(lon1);
+	lat2 = Number(lat2);
+	lon2 = Number(lon2);
 	var R = 3959; // mile
 	var dLat = (lat2 - lat1).toRad();
 	var dLon = (lon2 - lon1).toRad();
@@ -995,10 +1329,6 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 	var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 	var d = R * c;
 	return d;
-}
-
-Number.prototype.toRad = function () {
-	return this * Math.PI / 180;
 }
 
 //23) GetUsersForMatch
@@ -1016,7 +1346,8 @@ app.get('/approveuserformatch/:userid', function (req, res) {
 				distance = pref.maxSearchDistance;
 				maxage = pref.upperAgeLimit;
 				minage = pref.lowerAgeLimit;
-				searchlocation = pref.searchLocation;
+				searchLocation = pref.searchLocation;
+				console.log("-------------pref-------------", pref);
 
 
 				matchRef.orderByChild("userB").equalTo(req.params.userid).once('value', function (snapshot) {
@@ -1028,8 +1359,8 @@ app.get('/approveuserformatch/:userid', function (req, res) {
 								if (snapshot.exists()) {
 									otheruser = snapshot.val();
 									if (otheruser.age >= minage && otheruser.age <= maxage && pref.genders.indexOf(otheruser.gender) != -1 &&
-										calculateDistance(otheruser.currentLocation.latitide, otheruser.currentLocation.longitude, searchLocation.latitude, searchLocation.longitude) < distance)
-										aryuser.push(snapshot.val());								
+										calculateDistance(otheruser.currentLocation.latitude, otheruser.currentLocation.longitude, searchLocation.latitude, searchLocation.longitude) < distance)
+										aryuser.push(snapshot.val());
 								}
 								callback();
 							});
@@ -1137,6 +1468,33 @@ app.delete('/countries/:userid', function (req, res) {
 	});
 });
 
+//28) Get a event by userid
+app.get('/events/:userid', function (req, res) {
+	console.log("----------------API------28------------");
+	eventsRef.orderByChild("ownerUser").equalTo(req.params.userid).once("value", function (snapshot) {
+		var events = [];
+		if (snapshot.exists()) {
+			events = snapshot.val();
+
+
+
+
+			events = lodash.sortBy(events, "startDate").reverse();
+
+			console.log(events);
+			usersRef.child(req.params.userid).once("value", function (snapshot) {
+				if (snapshot.exists()) {
+					events.forEach(function (event) {
+						event.user = snapshot.val();
+					});
+				}
+				res.send(events)
+			});
+		} else
+			res.send(events);
+	});
+});
+
 //29) Get a moment by id
 app.get('/moments/:momentid', function (req, res) {
 	console.log("----------------API------29------------");
@@ -1159,28 +1517,159 @@ app.put('/moments/:momentid', function (req, res) {
 	});
 });
 
-//31 mutual friends api
-app.get('/mutual_friends/:otherUserId/:accessToken',function(req,appRes){
-	var accessToken=req.params.accessToken;
-	var otherUserId=req.params.otherUserId;
+//31 Get Mutual friends
+app.get('/mutual_friends/:userid/:accessToken', function (req, appRes) {
+	var accessToken = req.params.accessToken;
+	var userid = req.params.userid;
 	FB.setAccessToken(accessToken);
-	FB.api(otherUserId+'?fields=context.fields(all_mutual_friends)', function (res) {
-		  if(!res || res.error) {
-		   console.log(!res ? 'error occurred' : res.error);
-		   return;
-		  }
-		  var contextId=res.context.id;
-			if(contextId){
-			  FB.api(contextId+'/all_mutual_friends',function(response){
-			  	mutual_friends=response;
-			  	appRes.json(mutual_friends.data);
-			  });
-			}else{
-				appRes.json({'error':res,'code':200});
-			}
+	FB.api(userid + '?fields=context.fields(mutual_friends)', function (res) {
+		if (!res || res.error) {
+			console.log(!res ? 'error occurred' : res.error);
+			appRes.sendStatus(500);
+			return;
+		}
+		var contextId = res.context.id;
+		if (contextId) {
+			FB.api(contextId + '/all_mutual_friends', function (response) {
+				mutual_friends = response;
+				appRes.json(mutual_friends.data);
+			});
+		} else {
+			appRes.json({ 'error': res, 'code': 200 });
+		}
 	});
 })
 
+//32 save new event data
+app.post('/events', function (req, res) {
+	console.log("----------------API------32------------");
+	async.forEach(req.body.newevents, function (newevent, callback) {
+		var neweventref = eventsRef.push();
+		newevent.objectId = neweventref.key;
+		neweventref.set(newevent, function (error) {
+			callback();
+		});
+	}, function (err) {
+		res.sendStatus(200);
+	});
+});
 
+//33 Update notification
+app.put('/notifications/:notificationid', function (req, res) {
+	console.log("----------------API------33------------");
+	notificationRef.child(req.params.notificationid).update(req.body.newnotification, function (error) {
+		if (error)
+			res.sendStatus(404);
+		else
+			res.sendStatus(200);
+	});
+});
+
+//34) getEvents
+app.put('/allevents/:sort', function (req, res) {
+	console.log("----------------API------34 get all Events------------");
+	var searchedevents = [];
+	var sortstr = "distance";
+	if (req.params.sort == "popular") {
+		sortstr = "attendingsCount";
+	}
+	eventsRef.once("value", function (snapshot) {
+		for (key in snapshot.val()) {
+			event = snapshot.val()[key];
+			var distance = calculateDistance(event.latitude, event.longitude, req.body.lat, req.body.lon);
+			if (distance <= 50) {
+				event.distance = distance;
+				searchedevents.push(event);
+			}
+		}
+		lodash.sortBy(searchedevents, sortstr);
+		if (sortstr == "attendingsCount")
+			searchedevents = searchedevents.reverse();
+
+		async.forEach(searchedevents, function (event, callback) {
+			if (event.hasOwnProperty("ownerUser")) {
+				usersRef.child(event.ownerUser).once("value", function (snapshot) {
+					if (snapshot.exists()) event.user = snapshot.val();
+					callback();
+				});
+				/**/		var fbids=event.attendingsIds;
+							var validUsers=[];
+							async.forEach(fbids, function (fbid, callback) {
+								console.log(fbid.toString());
+				                usersRef.orderByChild("facebookId").equalTo(fbid.toString()).once('value', function (snapshot) {
+				                        if (snapshot.exists()){
+				                        	console.log("matchhhhhhhhhhhh");
+				                        		for(key in snapshot.val()){
+				                             	   validusers.push(snapshot.val()[key]);
+				                            }
+				                        }
+				                        callback();
+				                });
+				        }, function (err) {
+				                
+				        });
+				/**/
+			} else
+				callback();
+		}, function (err) {
+			res.send(searchedevents);
+		});
+	})
+});
+
+	//35) get valid fbusers
+app.post('/fbusers', function (req, res) {
+        console.log("----------------API------35 Valid FB Users------------");
+        var fbids = req.body.fbids;
+        var validusers = [];
+        async.forEach(fbids, function (fbid, callback) {
+                usersRef.orderByChild("facebookId").equalTo(fbid).once('value', function (snapshot) {
+                        if (snapshot.exists()){
+                        		for(key in snapshot.val()){
+                             	   validusers.push(snapshot.val()[key]);
+                            }
+                        }
+                        callback();
+                });
+        }, function (err) {
+                res.send(validusers);
+        });
+});
+
+//36)GetMatchedEventsForUserWithId 
+/*
+THis method returns events matched by userId.
+*/
+app.get('/events-by-user/:userId',function(req,res){
+	var userId = req.params.userId;
+		
+		usersRef.child(userId).once("value", function (snapshot) {
+			if(snapshot.exists()){
+				var facebookId=snapshot.val().facebookId;
+				//find events: keys to match in facebookId or AttendingId's
+				var userInvolvingEvents=[];
+				console.log("facebookId",facebookId);
+					eventsRef.orderByChild("facebookId").
+								equalTo("1996819877208350").once("value", function (snapshot){
+						if(snapshot.exists()){
+							console.log("events Exist where user is ownner.");
+							if (snapshot.exists()){
+                        		for(key in snapshot.val()){
+                             	   userInvolvingEvents.push(snapshot.val()[key]);
+                            	}
+                        	}
+                        /*Adding Events Where user is attending the event.*/		
+							res.json({"eventsUserInvolved":userInvolvingEvents,"status":200});
+						}else{
+							res.json({"status":200,"statusText":"No Events Registered"});
+						}
+					},function(errorObject){
+						console.log("errorObject",errorObject);
+					});
+			}else{
+				res.json({"status":404,"statusText":"No Users Exists With the specified User Id"});
+			}
+		});
+});
 
 module.exports = app;
