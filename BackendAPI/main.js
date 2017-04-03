@@ -14,6 +14,8 @@ var Thumbnail = require('thumbnail');
 var FB = require('facebook-node');
 var gm = require("gm");
 var jwt = require('jsonwebtoken');
+var Wreck = require('wreck');
+
 
 
 
@@ -1543,12 +1545,24 @@ app.get('/mutual_friends/:userid/:accessToken', function (req, appRes) {
 //32 save new event data
 app.post('/events', function (req, res) {
 	console.log("----------------API------32------------");
+	console.log("=====================================================");
+	console.log(req.body.newevents);
+	console.log("=====================================================");
 	async.forEach(req.body.newevents, function (newevent, callback) {
+	/*Step 1: check if event exists, if yes then remove event
+		eventsRef.orderByChild("facebookId").
+			equalTo(newevent.facebookId.toString()).once("value", function (snapshot){
+				if(snapshot.exists()){
+					snapshot.ref().remove();
+				}
+			});
+	/*Step 2 : Adding single event starts*/
 		var neweventref = eventsRef.push();
 		newevent.objectId = neweventref.key;
 		neweventref.set(newevent, function (error) {
 			callback();
 		});
+	 /*Adding single event ends*/
 	}, function (err) {
 		res.sendStatus(200);
 	});
@@ -1595,12 +1609,11 @@ app.put('/allevents/:sort', function (req, res) {
 				/**/		var fbids=event.attendingsIds;
 							var validUsers=[];
 							async.forEach(fbids, function (fbid, callback) {
-								console.log(fbid.toString());
 				                usersRef.orderByChild("facebookId").equalTo(fbid.toString()).once('value', function (snapshot) {
 				                        if (snapshot.exists()){
 				                        	console.log("matchhhhhhhhhhhh");
 				                        		for(key in snapshot.val()){
-				                             	   validusers.push(snapshot.val()[key]);
+				                             	   validUsers.push(snapshot.val()[key]);
 				                            }
 				                        }
 				                        callback();
@@ -1642,34 +1655,77 @@ THis method returns events matched by userId.
 */
 app.get('/events-by-user/:userId',function(req,res){
 	var userId = req.params.userId;
-		
+	var eventCounter=0;		
 		usersRef.child(userId).once("value", function (snapshot) {
 			if(snapshot.exists()){
+				//var userId=snapshot.val().objectId;
 				var facebookId=snapshot.val().facebookId;
 				//find events: keys to match in facebookId or AttendingId's
 				var userInvolvingEvents=[];
 				console.log("facebookId",facebookId);
-					eventsRef.orderByChild("facebookId").
-								equalTo("1996819877208350").once("value", function (snapshot){
-						if(snapshot.exists()){
-							console.log("events Exist where user is ownner.");
-							if (snapshot.exists()){
-                        		for(key in snapshot.val()){
-                             	   userInvolvingEvents.push(snapshot.val()[key]);
-                            	}
-                        	}
-                        /*Adding Events Where user is attending the event.*/		
-							res.json({"eventsUserInvolved":userInvolvingEvents,"status":200});
-						}else{
-							res.json({"status":200,"statusText":"No Events Registered"});
-						}
-					},function(errorObject){
-						console.log("errorObject",errorObject);
-					});
+				//sampleId :"1996819877208350"
+					async.series([function(callback){
+						console.log("in first taskl");
+						/*Adding Events Where user is attending the event*/
+                        eventsRef.once('value',function(snapshot){
+                        	var eventsArr=snapshot.val();
+                        	async.forEach(eventsArr,function(event,callback){
+                        	if(event.attendingsIds.indexOf(facebookId.toString())>0){
+							  	console.log("attending event found");
+							  	userInvolvingEvents.push(event);
+							  }
+                        	},function(err){
+
+                        	});
+                        	callback(null,1);
+                        })
+                      /*Adding Events Where user is attending the event Endssss*/
+					},function(callback){
+						console.log("in second task");
+						 /*Adding Events Where user is Owner User Starts*/
+							eventsRef.orderByChild("ownerUser").
+										equalTo(userId.toString()).once("value", function (snapshot){
+								if(snapshot.exists()){
+									console.log("events Exist where user is ownner.");
+									if (snapshot.exists()){
+		                        		for(key in snapshot.val()){
+		                             	   userInvolvingEvents.push(snapshot.val()[key]);
+		                            	}
+		                        	}
+									//res.json({"eventsUserInvolved":userInvolvingEvents,"status":200});
+								}
+								callback(null,2);
+							},function(errorObject){
+								console.log("errorObject",errorObject);
+							});
+					/*Adding Events Where user is Owner User Starts*/
+					},function(callback){
+						//adding location name.
+						async.forEach(userInvolvingEvents,function(event,callback){
+							Wreck.get('http://maps.googleapis.com/maps/api/geocode/json?latlng='+event.latitude+","+event.longitude+"&sensor=true",
+								(err,Wres,payload)=>{
+									var replaceIndex=userInvolvingEvents.indexOf(event);
+								event.location=JSON.parse(payload.toString()).results[0].formatted_address;
+								userInvolvingEvents[replaceIndex]=event;
+								console.log("Replacedddd");
+								eventCounter++;
+								if(eventCounter === userInvolvingEvents.length) {
+									res.json({"eventsUserInvolved":userInvolvingEvents,"status":200});
+							    }
+							})
+						},function(err){
+							console.log("Error getting location from geo map");
+						});
+						callback(null,3);
+					}]/*,function(){
+						res.json({"eventsUserInvolved":userInvolvingEvents,"status":200});
+					}*/);
 			}else{
 				res.json({"status":404,"statusText":"No Users Exists With the specified User Id"});
 			}
 		});
 });
+
+
 
 module.exports = app;
