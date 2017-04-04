@@ -1545,7 +1545,7 @@ app.get('/mutual_friends/:userid/:accessToken', function (req, appRes) {
 //32 save new event data
 app.post('/events', function (req, res) {
 	console.log("----------------API------32------------");
-	async.forEach(req.body.newevents, function (newevent, callback) {
+	async.forEach(JSON.parse(req.body.newevents), function (newevent, callback) {
 	/*Step 1: check if event exists, if yes then remove event*/
 		console.log("facebookId",newevent.facebookId);
 		eventsRef.orderByChild("facebookId").
@@ -1562,9 +1562,16 @@ app.post('/events', function (req, res) {
 						var neweventref = eventsRef.push();
 						newevent.objectId = neweventref.key;
 						console.log(newevent.startDate);
-						neweventref.set(newevent, function (error) {
-							callback();
-						});
+						/*Expiry date removAL code*/
+							var today = new Date();
+							var todayIOS = today.toISOString();
+							var d1 = new Date(todayIOS);
+						//if(newevent.startDate.getTime() > d1.getTime()){
+							/*Expiry date removal code*/
+							neweventref.set(newevent, function (error) {
+								callback();
+							});
+					   //}	
 					 /*Adding single event ends*/
 				
 			});
