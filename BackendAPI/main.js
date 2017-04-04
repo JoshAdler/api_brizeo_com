@@ -1545,24 +1545,29 @@ app.get('/mutual_friends/:userid/:accessToken', function (req, appRes) {
 //32 save new event data
 app.post('/events', function (req, res) {
 	console.log("----------------API------32------------");
-	console.log("=====================================================");
-	console.log(req.body.newevents);
-	console.log("=====================================================");
 	async.forEach(req.body.newevents, function (newevent, callback) {
-	/*Step 1: check if event exists, if yes then remove event
+	/*Step 1: check if event exists, if yes then remove event*/
+		console.log("facebookId",newevent.facebookId);
 		eventsRef.orderByChild("facebookId").
 			equalTo(newevent.facebookId.toString()).once("value", function (snapshot){
 				if(snapshot.exists()){
-					snapshot.ref().remove();
+					console.log("event foundddddddddd");
+					for(key in snapshot.val()){
+						eventsRef.child(key).remove();
+						console.log("1. removed eventttttttt");
+						//eventsRef.ref.remove();
+					}
 				}
+						/*Step 2 : Adding single event starts*/
+						var neweventref = eventsRef.push();
+						newevent.objectId = neweventref.key;
+						console.log(newevent.startDate);
+						neweventref.set(newevent, function (error) {
+							callback();
+						});
+					 /*Adding single event ends*/
+				
 			});
-	/*Step 2 : Adding single event starts*/
-		var neweventref = eventsRef.push();
-		newevent.objectId = neweventref.key;
-		neweventref.set(newevent, function (error) {
-			callback();
-		});
-	 /*Adding single event ends*/
 	}, function (err) {
 		res.sendStatus(200);
 	});
@@ -1705,7 +1710,12 @@ app.get('/events-by-user/:userId',function(req,res){
 							Wreck.get('http://maps.googleapis.com/maps/api/geocode/json?latlng='+event.latitude+","+event.longitude+"&sensor=true",
 								(err,Wres,payload)=>{
 									var replaceIndex=userInvolvingEvents.indexOf(event);
-								event.location=JSON.parse(payload.toString()).results[0].formatted_address;
+								if(JSON.parse(payload.toString()).results[0]){
+									var addr=JSON.parse(payload.toString()).results[0].formatted_address;
+								}else{
+									var addr='';
+								}
+								event.location=addr;
 								userInvolvingEvents[replaceIndex]=event;
 								console.log("Replacedddd");
 								eventCounter++;
