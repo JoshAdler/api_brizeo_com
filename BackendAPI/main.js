@@ -1337,21 +1337,65 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 app.get('/approveuserformatch/:userid', function (req, res) {
 	console.log("----------------API------23------------");
 	usersRef.child(req.params.userid).once("value", function (snapshot) {
+		console.log("user exists");
 		if (snapshot.exists()) {
 			curuser = snapshot.val();
-			preferencesRef.child(req.params.userid).once("value", function (snapshot) {
-				if (!snapshot.exists())
+			preferencesRef.child(req.params.userid).on("value", function (snapshot) {
+				if (!snapshot.exists()){
 					pref = snapshot.val();
-				else
+				}else{
 					pref = newpref;
+				}
 				if (!pref.hasOwnProperty("searchLocation")) pref.searchLocation = curuser.currentLocation;
+				console.log("pref",pref);
 				distance = pref.maxSearchDistance;
 				maxage = pref.upperAgeLimit;
 				minage = pref.lowerAgeLimit;
 				searchLocation = pref.searchLocation;
-				console.log("-------------pref-------------", pref);
+				var doNotIncludeThisUsers=[];
+				doNotIncludeThisUsers.push(req.params.userid);
+				/*Including users who are already matched with user*/
+					matchRef.orderByChild("userA").equalTo(req.params.userid).once('value', function (snapshot) {
+						if(snapshot.exists){
+							for(key in snapshot.val()){
+								doNotIncludeThisUsers.push(snapshot.val()[key].userB);
+							}
+						}
+					});
+				/*ends*/
+				var aryuser = [];
+				usersRef.once('value',function(snapshot){
+					if(snapshot.exists()){
+						otheruser = snapshot.val();
+						async.forEach(otheruser,function(usr,callback){
+							/*search criteriass*/
+							if(usr.currentLocation){
+								var searchTest=calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"],searchLocation.latitude, searchLocation.longitude) < distance;
+							}
+								var minAgeTest=usr.age >= minage;
+								var maxAgeTest=usr.age <= maxage;
+								var genderTest=pref.genders.indexOf(usr.gender) != -1;
+								var overAllTest;
+								if(typeof searchTest!=='undefined'){
+									overAllTest=searchTest && minAgeTest && maxAgeTest && genderTest;
+								}else{
+									overAllTest=minAgeTest && maxAgeTest && genderTest;
+								}
+								if(overAllTest){
+									if(doNotIncludeThisUsers.indexOf(usr.objectId)<0){
+										aryuser.push(usr);
+									}
+								}
+						},function(err){
+							res.send(aryuser);
+						});
+						console.log(aryuser.length);
+						res.json(aryuser);
+					}
+				});
 
 
+				/*
 				matchRef.orderByChild("userB").equalTo(req.params.userid).once('value', function (snapshot) {
 					var aryuser = [];
 					if (snapshot.exists()) {
@@ -1372,10 +1416,15 @@ app.get('/approveuserformatch/:userid', function (req, res) {
 					} else
 						res.send(aryuser);
 				});
+			*/	
+			},function(err){
+				console.log("error",err);
 			});
 
-		} else
+		} else{
+			console.log("not found status");
 			res.sendStatus(404);
+		}
 	});
 });
 
@@ -1545,7 +1594,7 @@ app.get('/mutual_friends/:userid/:accessToken', function (req, appRes) {
 //32 save new event data
 app.post('/events', function (req, res) {
 	console.log("----------------API------32------------");
-	async.forEach(JSON.parse(req.body.newevents), function (newevent, callback) {
+	async.forEach(req.body.newevents, function (newevent, callback) {
 	/*Step 1: check if event exists, if yes then remove event*/
 		console.log("facebookId",newevent.facebookId);
 		eventsRef.orderByChild("facebookId").
@@ -1665,8 +1714,18 @@ app.post('/fbusers', function (req, res) {
 /*
 THis method returns events matched by userId.
 */
-app.get('/events-by-user/:userId',function(req,res){
+app.put('/events-by-user/:userId/:sort',function(req,res){
 	var userId = req.params.userId;
+	
+	var sort=req.params.sort;
+	var lat=req.body.lat;
+	var lon=req.body.lon;
+
+	var sortstr = "distance";
+	if (req.params.sort == "popular") {
+		sortstr = "attendingsCount";
+	}
+
 	var eventCounter=0;		
 		usersRef.child(userId).once("value", function (snapshot) {
 			if(snapshot.exists()){
@@ -1684,6 +1743,9 @@ app.get('/events-by-user/:userId',function(req,res){
                         	async.forEach(eventsArr,function(event,callback){
                         	if(event.attendingsIds.indexOf(facebookId.toString())>0){
 							  	console.log("attending event found");
+							  	/*Attach Distance here*/
+							  		event["distance"]=calculateDistance(event.latitude,event.longitude,req.body.lat,req.body.lon);
+							  	/*Ends*/
 							  	userInvolvingEvents.push(event);
 							  }
                         	},function(err){
@@ -1701,7 +1763,9 @@ app.get('/events-by-user/:userId',function(req,res){
 									console.log("events Exist where user is ownner.");
 									if (snapshot.exists()){
 		                        		for(key in snapshot.val()){
-		                             	   userInvolvingEvents.push(snapshot.val()[key]);
+		                        			var eventObj=snapshot.val()[key];
+		                        		   eventObj["distance"]=calculateDistance(eventObj.latitude,eventObj.longitude,req.body.lat,req.body.lon);	
+		                             	   userInvolvingEvents.push(eventObj);
 		                            	}
 		                        	}
 									//res.json({"eventsUserInvolved":userInvolvingEvents,"status":200});
@@ -1727,6 +1791,14 @@ app.get('/events-by-user/:userId',function(req,res){
 								console.log("Replacedddd");
 								eventCounter++;
 								if(eventCounter === userInvolvingEvents.length) {
+									/*filter*/
+									console.log(sortstr);
+									userInvolvingEvents=lodash.sortBy(userInvolvingEvents, sortstr);
+									if (sortstr == "attendingsCount"){
+										userInvolvingEvents = userInvolvingEvents.reverse();
+									}
+									userInvolvingEvents=lodash.uniqBy(userInvolvingEvents,'facebookId');
+									/*fultering logic ends.*/
 									res.json({"eventsUserInvolved":userInvolvingEvents,"status":200});
 							    }
 							})
@@ -1743,6 +1815,42 @@ app.get('/events-by-user/:userId',function(req,res){
 		});
 });
 
+/*37 Delete User.*/
+app.get('/delete-user/:userId',function(req,res){
+	var userId = req.params.userId;
+	//delete moments pics.
+	async.series([function(callback){
+			momentImagesRef
+				.orderByChild("ownerUser")
+				.equalTo(userId.toString())
+				.once("value", function (snapshot){
 
+				 if(snapshot.exists()){
+				 	for(key in snapshot.val()){
+				 		//delete moment image ref.
+				 		console.log("Removing"+snapshot.val()[key])
+				 		momentImagesRef.child(key).remove();
+				 	}
+				 }
+				});
+		callback();
+	 },
+		function(callback){
+				usersRef.child(req.params.userid).once("value", function (snapshot) {
+
+				 if(snapshot.exists()){
+				 	for(key in snapshot.val()){
+				 		//delete moment image ref.
+				 		console.log("Removing"+snapshot.val()[key]);
+				 		usersRef.child(key).remove();
+				 	}
+				 }	
+				});
+				callback();
+				res.json({"success":true,"status":200});
+
+	}])
+
+});
 
 module.exports = app;
