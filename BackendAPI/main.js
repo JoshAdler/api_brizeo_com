@@ -1254,15 +1254,12 @@ var likeunlikeMatch = function (req, res, status) {
 	matchRef.orderByChild("userA").equalTo(req.params.userid1).once('value', function (snapshot) {
 		if (snapshot.exists()) {
 			snapshot.forEach(function (match) {
-				console.log(match.ref);
-				console.log(match);
 				matches.push(match);
 				//matches.push(match);
 			});
 			var curlike = lodash.filter(matches, (match) => {
 				return match.val().userB === req.params.userid2;
 			});
-			console.log(curlike);
 			if (curlike.length == 1) {
 				curlike[0].ref.set(appr);
 				getUserStatus(req.params.userid2, req.params.userid1).then(function (status2) {
@@ -1270,9 +1267,33 @@ var likeunlikeMatch = function (req, res, status) {
 					// if (status2 == -1) mutualStatus = status + 2;
 					// else if (status2 == 0) mutualStatus = status + 5;
 					// else if (status2 == 1) mutualStatus = status + 8;
-					console.log(mutualStatus);
-					if (mutualStatus == 9)
+					console.log("lenth 1 for curlike"+mutualStatus);
+					if (mutualStatus == 9){
 						registerNotification(req.params.userid1, req.params.userid2, "newmatch", curlike[0].ref.key)
+					}
+					/*del code*/
+						if(status==0){
+							console.log("decline method");
+							matchRef.orderByChild("userA").equalTo(req.params.userid1)
+									 //.orderByChild("userB").equalTo(req.params.userid2)
+									 .once("value",function(snapshot){
+									 	if(snapshot.exists()){
+									 		for(key in snapshot.val()){
+									 			var matchedMatch=snapshot.val()[key];
+									 			if(matchedMatch.userB==req.params.userid2){
+									 				console.log("delete this match");
+									 				matchRef.child(key).remove();
+
+									 			}
+									 		}	
+									 	}else{
+									 		console.log("no match found");
+									 	}
+
+									 });
+						/*ends*/
+					}
+					/*del code*/
 					res.send(mutualStatus + "");
 				}).catch(function (e) {
 					console.log(e);
@@ -1289,12 +1310,36 @@ var likeunlikeMatch = function (req, res, status) {
 			else {
 				getUserStatus(req.params.userid2, req.params.userid1).then(function (status2) {
 					var mutualStatus = status + (status2 + 1) * 3 + 2;
-					console.log(mutualStatus);
-					if (mutualStatus == 9)
+					console.log("final:->"+mutualStatus);
+					if (mutualStatus == 9){
 						registerNotification(req.params.userid1, req.params.userid2, "newmatch", newmatchref.key)
+					}
+					/*del code*/
+						if(status==0){
+							console.log("decline method");
+							matchRef.orderByChild("userA").equalTo(req.params.userid1)
+									 //.orderByChild("userB").equalTo(req.params.userid2)
+									 .once("value",function(snapshot){
+									 	if(snapshot.exists()){
+									 		for(key in snapshot.val()){
+									 			var matchedMatch=snapshot.val()[key];
+									 			if(matchedMatch.userB==req.params.userid2){
+									 				console.log("delete this match");
+									 				matchRef.child(key).remove();
+
+									 			}
+									 		}	
+									 	}else{
+									 		console.log("no match found");
+									 	}
+
+									 });
+						/*ends*/
+					}
+					/*del code*/
 					res.send(mutualStatus + "");
 				}).catch(function (e) {
-					console.log(e);
+					console.log("error in status:->"+e);
 					res.status(500).end();
 				});
 			}
@@ -1322,6 +1367,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 	lon1 = Number(lon1);
 	lat2 = Number(lat2);
 	lon2 = Number(lon2);
+	//console.log("-------==============",lat1,lon1,lat2,lon2);
 	var R = 3959; // mile
 	var dLat = (lat2 - lat1).toRad();
 	var dLon = (lon2 - lon1).toRad();
@@ -1330,6 +1376,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 		Math.sin(dLon / 2) * Math.sin(dLon / 2);
 	var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 	var d = R * c;
+	//console.log("distance",d);
 	return d;
 }
 
@@ -1340,10 +1387,14 @@ app.get('/approveuserformatch/:userid', function (req, res) {
 		console.log("user exists");
 		if (snapshot.exists()) {
 			curuser = snapshot.val();
-			preferencesRef.child(req.params.userid).on("value", function (snapshot) {
-				if (!snapshot.exists()){
+			console.log("req.params.userid"+req.params.userid.toString());
+			preferencesRef.child(req.params.userid.toString()).once("value", function (snapshot) {
+				console.log(snapshot.val());
+				if (snapshot.exists()){
+					console.log("assigning value");
 					pref = snapshot.val();
 				}else{
+					console.log("assinging new pred");
 					pref = newpref;
 				}
 				if (!pref.hasOwnProperty("searchLocation")) pref.searchLocation = curuser.currentLocation;
@@ -1369,19 +1420,16 @@ app.get('/approveuserformatch/:userid', function (req, res) {
 						otheruser = snapshot.val();
 						async.forEach(otheruser,function(usr,callback){
 							/*search criteriass*/
+							var searchTest=false;
 							if(usr.currentLocation){
-								var searchTest=calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"],searchLocation.latitude, searchLocation.longitude) < distance;
+								searchTest=calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"],searchLocation.latitude, searchLocation.longitude) < distance;
 							}
 								var minAgeTest=usr.age >= minage;
 								var maxAgeTest=usr.age <= maxage;
 								var genderTest=pref.genders.indexOf(usr.gender) != -1;
-								var overAllTest;
-								if(typeof searchTest!=='undefined'){
-									overAllTest=searchTest && minAgeTest && maxAgeTest && genderTest;
-								}else{
-									overAllTest=minAgeTest && maxAgeTest && genderTest;
-								}
+								var overAllTest=searchTest && minAgeTest && maxAgeTest && genderTest;
 								if(overAllTest){
+									console.log("usr founddddddddddddddddddd");
 									if(doNotIncludeThisUsers.indexOf(usr.objectId)<0){
 										aryuser.push(usr);
 									}
@@ -1799,7 +1847,21 @@ app.put('/events-by-user/:userId/:sort',function(req,res){
 									}
 									userInvolvingEvents=lodash.uniqBy(userInvolvingEvents,'facebookId');
 									/*fultering logic ends.*/
-									res.json({"eventsUserInvolved":userInvolvingEvents,"status":200});
+									/*add user obj starts*/
+										var finalCounter=0;
+										async.forEach(userInvolvingEvents,function(event,callback){
+												usersRef.child(event.ownerUser).once("value", function (snapshot) {
+												finalCounter++;
+												if (snapshot.exists()) {
+													console.log("final push");
+													event["user"] = snapshot.val();
+												}
+												if(finalCounter == userInvolvingEvents.length){
+													console.log("before sending");
+													res.json(userInvolvingEvents);
+												  }
+											});
+										});
 							    }
 							})
 						},function(err){
@@ -1828,7 +1890,7 @@ app.get('/delete-user/:userId',function(req,res){
 				 if(snapshot.exists()){
 				 	for(key in snapshot.val()){
 				 		//delete moment image ref.
-				 		console.log("Removing"+snapshot.val()[key])
+				 		console.log("removing moments");
 				 		momentImagesRef.child(key).remove();
 				 	}
 				 }
@@ -1836,14 +1898,11 @@ app.get('/delete-user/:userId',function(req,res){
 		callback();
 	 },
 		function(callback){
-				usersRef.child(req.params.userid).once("value", function (snapshot) {
+				usersRef.child(req.params.userId).once("value", function (snapshot) {
 
 				 if(snapshot.exists()){
-				 	for(key in snapshot.val()){
 				 		//delete moment image ref.
-				 		console.log("Removing"+snapshot.val()[key]);
-				 		usersRef.child(key).remove();
-				 	}
+				 		usersRef.child(snapshot.val()["objectId"]).remove();
 				 }	
 				});
 				callback();
@@ -1853,4 +1912,147 @@ app.get('/delete-user/:userId',function(req,res){
 
 });
 
+
+/*38 Get Matched Events for user : Events of User's Matches Where user's events are not there.*/
+app.put('/events-by-users-matches/:userId/:sort',function(req,res){
+	var userId = req.params.userId;
+	
+	var sort=req.params.sort;
+	var lat=req.body.lat;
+	var lon=req.body.lon;
+
+	var sortstr = "distance";
+	if (req.params.sort == "popular") {
+		sortstr = "attendingsCount";
+	}
+	var includeThisUsers=[];
+	var getFBIdsFromUserIds=[];
+	var userInvolvingEvents=[];
+
+	 matchRef.orderByChild("userA").equalTo(req.params.userId)
+       .once("value",function(snapshot){
+			if(snapshot.exists()){
+				async.series([function(callback){
+					for(key in snapshot.val()){
+						includeThisUsers.push(snapshot.val()[key].userB);
+				    }
+				   callback(null,includeThisUsers);
+				},function(callback){
+					console.log("step 2");
+					var count=0;
+					async.forEach(includeThisUsers,function(usr,cb){
+						usersRef.child(usr).once("value", function (snapshot) {
+							count++;
+							getFBIdsFromUserIds.push(snapshot.val().facebookId);
+							console.log("pushed");
+							if(count==includeThisUsers.length){
+								callback(null,getFBIdsFromUserIds);
+							}
+						});
+					},function(err){
+						console.log("err",err);
+					})},
+				function(callback){
+					console.log("step3");
+					/*events logic
+						Part A : Attending Id's
+					*/
+					eventsRef.once('value',function(snapshot){
+                        	var eventsArr=snapshot.val();
+                        	var cnt=0;
+                        	var eventArrCnt=lodash.size(eventsArr);
+                        	async.forEach(eventsArr,function(event,icB1){
+                        		cnt++;
+                        		console.log("inside eventsArr");
+                        		async.forEach(getFBIdsFromUserIds,function(fbId,iCB2){
+                        			if(event.attendingsIds.indexOf(fbId)>0){
+                        				console.log("inside fb users :: attending event found");
+									  	event["distance"]=calculateDistance(event.latitude,event.longitude,req.body.lat,req.body.lon);
+									  	userInvolvingEvents.push(event);
+		                        	}
+                        		});
+                        		if(cnt==eventArrCnt){
+									  	callback(null,userInvolvingEvents);
+									}	
+                        	});
+ 					});
+ 					/*Events Logic*/
+				},function(cb){
+					console.log("step 4");
+					var cntr=0;
+					async.forEach(includeThisUsers,function(usrId,icB3){
+							eventsRef.orderByChild("ownerUser").
+										equalTo(usrId.toString()).once("value", function (snapshot){
+								if(snapshot.exists()){
+									console.log("events Exist where user is ownner.");
+									if (snapshot.exists()){
+		                        		for(key in snapshot.val()){
+		                        			var eventObj=snapshot.val()[key];
+		                        		   eventObj["distance"]=calculateDistance(eventObj.latitude,eventObj.longitude,req.body.lat,req.body.lon);	
+		                             	   userInvolvingEvents.push(eventObj);
+		                            	}
+		                        	}
+								}
+								cntr++;
+								if(cntr==includeThisUsers.length){
+								   cb(null,userInvolvingEvents);
+							    }	
+							});		
+					});
+				},function(callback){
+						//adding location name.
+						console.log("step 5");
+						var eventCounter=0;
+						async.forEach(userInvolvingEvents,function(event,ib1){
+							Wreck.get('http://maps.googleapis.com/maps/api/geocode/json?latlng='+event.latitude+","+event.longitude+"&sensor=true",
+								(err,Wres,payload)=>{
+									var replaceIndex=userInvolvingEvents.indexOf(event);
+								if(JSON.parse(payload.toString()).results[0]){
+									var addr=JSON.parse(payload.toString()).results[0].formatted_address;
+								}else{
+									var addr='';
+								}
+								event.location=addr;
+								userInvolvingEvents[replaceIndex]=event;
+								eventCounter++;
+								if(eventCounter === userInvolvingEvents.length) {
+									/*filter*/
+									console.log(sortstr);
+									userInvolvingEvents=lodash.sortBy(userInvolvingEvents, sortstr);
+									if (sortstr == "attendingsCount"){
+										userInvolvingEvents = userInvolvingEvents.reverse();
+									}
+									userInvolvingEvents=lodash.uniqBy(userInvolvingEvents,'facebookId');
+									/*fultering logic ends.*/
+									/*add user obj starts*/
+										var finalCounter=0;
+									console.log("userInvolvingEventsLength"+userInvolvingEvents.length);
+									async.forEach(userInvolvingEvents,function(event,ib2){
+												usersRef.child(event.ownerUser).once("value", function (snapshot) {
+												finalCounter++;
+												if (snapshot.exists()) {
+													console.log("final push");
+													event["user"] = snapshot.val();
+												}
+												if(finalCounter == userInvolvingEvents.length){
+													console.log("before sending");
+													res.json(userInvolvingEvents);
+												  }
+											});
+										});
+							    }
+							})
+						},function(err){
+							console.log("Error getting location from geo map");
+						});
+					}
+				]);
+	       }else{
+	       	    res.sendStatus(404);
+	       }
+     })
+});       
+
+
+/*38 ends*/
 module.exports = app;
