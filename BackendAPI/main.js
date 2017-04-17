@@ -1035,6 +1035,7 @@ app.get('/notifications/:userid', function (req, res) {
 
 			async.forEach(notifications, function (notification, callback) {
 				arynotification.push(notification);
+				console.log(notification.sendUser);
 				usersRef.child(notification.sendUser).once("value", function (snapshot) {
 					if (snapshot.exists()) notification.user = snapshot.val();
 					if (notification.pushType == "momentslike") {
@@ -1273,17 +1274,19 @@ var likeunlikeMatch = function (req, res, status) {
 					}
 					/*del code*/
 						if(status==0){
-							console.log("decline method");
-							matchRef.orderByChild("userA").equalTo(req.params.userid1)
+							console.log("decline method:::::::",req.params.userid2);
+							matchRef.orderByChild("userA").equalTo(req.params.userid2)
 									 //.orderByChild("userB").equalTo(req.params.userid2)
 									 .once("value",function(snapshot){
 									 	if(snapshot.exists()){
+									 		console.log("snapshot exists");
 									 		for(key in snapshot.val()){
 									 			var matchedMatch=snapshot.val()[key];
-									 			if(matchedMatch.userB==req.params.userid2){
+									 			console.log("maaaatched moment",matchedMatch);
+									 			console.log("userid1",req.params.userid1);
+									 			if(matchedMatch.userB==req.params.userid1){
 									 				console.log("delete this match");
 									 				matchRef.child(key).remove();
-
 									 			}
 									 		}	
 									 	}else{
@@ -1292,8 +1295,66 @@ var likeunlikeMatch = function (req, res, status) {
 
 									 });
 						/*ends*/
+					}else{
+						console.log("Approve Wants to Match Notificationsss");
+						var checkMatch=false;
+						var aTOBcheck=false;
+						var bToacheck=false;
+
+						async.series([function(icb1){
+								matchRef.orderByChild("userA").equalTo(req.params.userid1)
+									.once('value',function(snapshot){
+										if(snapshot.exists()){
+											for(key in snapshot.val()){
+												if(snapshot.val()[key].userB==req.params.userid2){
+													aTOBcheck=true;
+												}
+											}
+										}
+										icb1();
+								});
+						  },
+						function(icb2){
+							matchRef.orderByChild("userA").equalTo(req.params.userid2)
+									.once('value',function(snapshot){
+										if(snapshot.exists()){
+											for(key in snapshot.val()){
+												if(snapshot.val()[key].userB==req.params.userid1){
+													bToacheck=true;
+												}
+											}
+										}
+										icb2();
+								});
+						},function(icb3){
+							if(aTOBcheck==false || bToacheck==false){
+								console.log("not a match time to send notification 1st");
+										if(aTOBcheck==false || bToacheck==false){
+														console.log("not a match time to send notification 2nd");
+														
+														/*usr obj*/
+														usersRef.child(req.params.userid1).once("value", function (sn) {
+															if(sn.exists()){
+																var notifyObj={};
+																notifyObj["user"]=sn.val();
+																notifyObj["isAlreadyViewed"]=false;
+																notifyObj["pushType"]="wantsToMatch";
+																notifyObj["createdAt"]= new Date().toISOString();
+																notifyObj["receiveUser"]=req.params.userid2;
+																notifyObj["sendUser"]=req.params.userid1;
+																newnotiref = notificationRef.push();
+																notifyObj.objectId=newnotiref.key;
+																newnotiref.set(notifyObj);
+																console.log("notification set");
+															}
+														});
+														/*usr obj*/
+													}
+
+							}
+						}]);
 					}
-					/*del code*/
+					/*del code ends*/
 					res.send(mutualStatus + "");
 				}).catch(function (e) {
 					console.log(e);
@@ -1317,16 +1378,15 @@ var likeunlikeMatch = function (req, res, status) {
 					/*del code*/
 						if(status==0){
 							console.log("decline method");
-							matchRef.orderByChild("userA").equalTo(req.params.userid1)
+							matchRef.orderByChild("userA").equalTo(req.params.userid2)
 									 //.orderByChild("userB").equalTo(req.params.userid2)
 									 .once("value",function(snapshot){
 									 	if(snapshot.exists()){
 									 		for(key in snapshot.val()){
 									 			var matchedMatch=snapshot.val()[key];
-									 			if(matchedMatch.userB==req.params.userid2){
+									 			if(matchedMatch.userB==req.params.userid1){
 									 				console.log("delete this match");
 									 				matchRef.child(key).remove();
-
 									 			}
 									 		}	
 									 	}else{
@@ -1334,9 +1394,67 @@ var likeunlikeMatch = function (req, res, status) {
 									 	}
 
 									 });
-						/*ends*/
-					}
-					/*del code*/
+							}else{
+							console.log("Approve::: Wants to Match Notificationsss");
+												var checkMatch=false;
+												var aTOBcheck=false;
+												var bToacheck=false;
+
+												async.series([function(icb1){
+														matchRef.orderByChild("userA").equalTo(req.params.userid1)
+															.once('value',function(snapshot){
+																if(snapshot.exists()){
+																	for(key in snapshot.val()){
+																		if(snapshot.val()[key].userB==req.params.userid2){
+																			aTOBcheck=true;
+																		}
+																	}
+																}
+																icb1();
+														});
+												  },
+												function(icb2){
+													matchRef.orderByChild("userA").equalTo(req.params.userid2)
+															.once('value',function(snapshot){
+																if(snapshot.exists()){
+																	for(key in snapshot.val()){
+																		if(snapshot.val()[key].userB==req.params.userid1){
+																			bToacheck=true;
+																		}
+																	}
+																}
+																icb2();
+														});
+												},function(icb3){
+													if(aTOBcheck==false || bToacheck==false){
+														console.log("not a match time to send notification 2nd");
+														var notifyObj={};
+														/*usr obj*/
+																	
+														/*usr obj*/
+														usersRef.child(req.params.userid1).once("value", function (sn) {
+															if(sn.exists()){
+																var notifyObj={};
+																notifyObj["user"]=sn.val();
+																notifyObj["isAlreadyViewed"]=false;
+																notifyObj["pushType"]="wantsToMatch";
+																notifyObj["createdAt"]= new Date().toISOString();
+																notifyObj["receiveUser"]=req.params.userid2;
+																notifyObj["sendUser"]=req.params.userid1;
+																newnotiref = notificationRef.push();
+																notifyObj.objectId=newnotiref.key;
+																newnotiref.set(notifyObj);
+																console.log("notification set");
+															}
+														});
+														/*usr obj*/
+														/*usr obj*/
+													}
+												}]);
+
+							}
+					/*del code ends*/
+					console.log("before snedinf status");
 					res.send(mutualStatus + "");
 				}).catch(function (e) {
 					console.log("error in status:->"+e);
@@ -1478,22 +1596,123 @@ app.get('/approveuserformatch/:userid', function (req, res) {
 
 //24) GetMatchesForUser
 app.get('/approvematchforuser/:userid', function (req, res) {
+/*	
 	console.log("----------------API------24------------");
+	console.log("userB matching id is ",req.params.userid);
 	matchRef.orderByChild("userB").equalTo(req.params.userid).once('value', function (snapshot) {
 		var aryuser = [];
+		var cntr=0;
+		console.log("inside match");
 		if (snapshot.exists()) {
 			async.forEach(snapshot.val(), function (matchrow, callback) {
-				usersRef.child(matchrow.userA).once("value", function (snapshot) {
-					console.log(snapshot.val());
-					if (snapshot.exists()) aryuser.push(snapshot.val());
-					callback();
-				});
-			}, function (err) {
+				console.log("inside async");
+				cntr++;
+				if(matchrow.status!==0){
+					console.log("inside status");
+						usersRef.child(matchrow.userA).once("value", function (sn) {
+							if (sn.exists()){
+								console.log("pushe");
+								aryuser.push(sn.val());
+							}
+							/*sending back response*
+							console.log("cntr",cntr);
+							console.log("size",lodash.size(snapshot.val()));
+							if(cntr==lodash.size(snapshot.val())){
+								res.json(aryuser);
+							}
+
+							/*sending back response ends
+						});
+			 }
+			}, function (cb) {
+				console.log("1 semnding response");
 				res.json(aryuser);
 			});
-		} else
+		} else{
+			console.log("inside error");
 			res.send(aryuser);
+		}
 	});
+*/
+	console.log("----------------API------24------------");
+	console.log("userB matching id is ",req.params.userid);
+	var myMatches=[];
+	var usersWhoMatchedWithMe=[];
+	var usersIMatchedWith=[];
+	async.series([function(icb1){
+		var cntr=0;
+		matchRef.orderByChild("userB").
+				equalTo(req.params.userid).once('value', function (snapshot) {
+					if (snapshot.exists()) {
+						async.forEach(snapshot.val(), function (matchrow, callback) {
+						console.log("inside async");
+						cntr++;
+						if(matchrow.status!==0){
+							usersWhoMatchedWithMe.push(matchrow.userA);
+						 }
+
+						 if(cntr==lodash.size(snapshot.val())){
+								icb1();
+						  }
+
+					});
+				}else{
+					icb1();
+				}
+		})
+	},function(icb2){
+		console.log("inside method2");
+		var cntr2=0;
+		matchRef.orderByChild("userA").
+				equalTo(req.params.userid).once('value', function (snapshot) {
+					if (snapshot.exists()) {
+						async.forEach(snapshot.val(), function (matchrow, callback) {
+						console.log("inside async");
+						cntr2++;
+						if(matchrow.status!==0){
+							usersIMatchedWith.push(matchrow.userB);
+						 }
+						 console.log("cntr2",cntr2);
+						 console.log("size",lodash.size(snapshot.val()));
+						 if(cntr2==lodash.size(snapshot.val())){
+								icb2();
+						  }
+					});
+				}else{
+					icb2();
+				}
+
+			})},function(icb3){
+				console.log("inside method 3");
+				console.log(usersIMatchedWith);
+				console.log(usersWhoMatchedWithMe);
+				var myMatchesId=intersection_destructive(usersIMatchedWith,usersWhoMatchedWithMe);
+				console.log(myMatchesId);
+				var finalCntr=0;
+				if(myMatchesId.length==0){
+					res.json(myMatches);
+				}
+				async.forEach(myMatchesId,function(match,callback){
+					usersRef.child(match).once("value", function (sn) {
+						finalCntr++;
+						if(sn.exists()){
+							myMatches.push(sn.val());
+						}else{
+							res.json(myMatches);
+						}
+						/*returning response strts*/
+						console.log("finalCntr",finalCntr);
+						console.log("myMatches",myMatchesId.length);
+						if(finalCntr==myMatchesId.length){
+							res.json(myMatches);
+						}
+
+						/*returning response ends*/
+					});
+				})
+
+			}
+		])
 });
 
 //25) GetCountriesForUser
@@ -1866,6 +2085,7 @@ app.put('/events-by-user/:userId/:sort',function(req,res){
 							})
 						},function(err){
 							console.log("Error getting location from geo map");
+							res.json(userInvolvingEvents);
 						});
 						callback(null,3);
 					}]/*,function(){
@@ -2053,6 +2273,44 @@ app.put('/events-by-users-matches/:userId/:sort',function(req,res){
      })
 });       
 
-
 /*38 ends*/
+
+
+/*utitlies function :if some user approved other user, and they are not already matched between each other*/
+function checkIfAlreadyMatched(usrId1,usrId2){
+	console.log("checkIfAlreadyMatched");
+	 /*
+	 matchRef.orderByChild("userA").equalTo(usrId1).once('value',function(snapshot){
+	 	if(snapshot.exists()){
+	 		console.log("snapshot exists");
+	 		for(key in snapshot.val()){
+						if(snapshot.val()[key].userB==usrId2){
+							console.log("return true");
+							return true;
+						}else{
+							console.log("return false");
+							return false;
+						}
+				}
+	 	}else{
+	 		console.log("no val found");
+	 		return false;
+	 	}
+	 });
+*/
+}
+/*utilities functions*/
+
+/*intesection array*/
+function intersection_destructive(a, b)
+{
+  var result = [];
+	for(each in a){
+  	if(b.indexOf(a[each])>=0){
+      result.push(a[each]);
+    }
+  }
+  return result;
+}
+
 module.exports = app;

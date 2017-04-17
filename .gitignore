@@ -6,3 +6,4 @@
 /static/django/debug.log
 /apps/dashboard/_static/dashboard/_lib/bower_components/
 /apps/dashboard/_static/dashboard/_lib/node_modules/
+node_modules
