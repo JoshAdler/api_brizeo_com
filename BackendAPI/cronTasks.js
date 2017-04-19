@@ -17,11 +17,9 @@ function eliminateExpiredEvents(){
       eventsRef.once('value',function(snapshot){
               var eventsArr=snapshot.val();
               var eventArrCnt=lodash.size(eventsArr);
-              console.log("eventsArrCnt",eventArrCnt);
               async.forEach(eventsArr,function(event,icB1){
                 if(Date.parse(event.startDate)-Date.parse(new Date())<0){
                   eventsRef.child(event.objectId).remove();
-                  console.log("Event is expired");
                 }
               });
           });

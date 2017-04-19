@@ -33,7 +33,8 @@ app.use(bodyParser.json());
 var secretkey = "SeCrEtKeYfOrHaShInG";
 const authMiddleware = (req, res, next) => {
     // read the token from header or url 
-    const token = req.headers['x-access-token'] || req.query.token
+    const token = req.headers['x-access-token'] || req.query.token;
+    const userId=req.headers['x-user-id'] || req.query.user-id;
 
     // token does not exist
     if(!token) {
@@ -70,7 +71,11 @@ function makeJWT(username) {
 //app.use(express.bodyParser({limit: '50mb'}));
 //app.use(bodyParser.json({limit: '50mb'}));
 //app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
-app.use('/customer', authMiddleware);
+
+/*
+Adding auth request for all
+*/
+//app.use(authMiddleware);
 
 
 firebase.initializeApp({
@@ -362,6 +367,7 @@ app.post('/users', function (req, res) {
 		console.log(newuser);
 		newuserref = usersRef.push();
 		newuser.objectId = newuserref.key;
+		newuser.jwt=makeJWT(objectId);
 		console.log("-----------key-----------", newuserref.key);
 		usersRef.child(newuserref.key).set(newuser, function (error) {
 			if (error)
@@ -1924,9 +1930,11 @@ app.put('/allevents/:sort', function (req, res) {
 				searchedevents.push(event);
 			}
 		}
-		lodash.sortBy(searchedevents, sortstr);
-		if (sortstr == "attendingsCount")
+		searchedevents=lodash.sortBy(searchedevents, sortstr);
+		if (sortstr == "attendingsCount"){
+			console.log("trying to reverse");
 			searchedevents = searchedevents.reverse();
+		}
 
 		async.forEach(searchedevents, function (event, callback) {
 			if (event.hasOwnProperty("ownerUser")) {
@@ -2148,15 +2156,44 @@ app.put('/events-by-users-matches/:userId/:sort',function(req,res){
 	var includeThisUsers=[];
 	var getFBIdsFromUserIds=[];
 	var userInvolvingEvents=[];
+	var usersIMatchedWith=[];
+	var usersWhoMatchedWithMe=[];
+	console.log("=================================================38=========================================");
+	console.log("req.body.userid",req.params.userId);
+	console.log("req.params.sort",req.params.sort);
+	console.log("req.body.lat",req.body.lat);
+	console.log("req.body.lon",req.body.lon);
+	console.log("=================================================38============================================");
 
 	 matchRef.orderByChild("userA").equalTo(req.params.userId)
        .once("value",function(snapshot){
 			if(snapshot.exists()){
 				async.series([function(callback){
 					for(key in snapshot.val()){
-						includeThisUsers.push(snapshot.val()[key].userB);
+						usersIMatchedWith.push(snapshot.val()[key].userB);
 				    }
 				   callback(null,includeThisUsers);
+				},function(icb2){
+					console.log("step 1.1",req.params.userId);
+					 matchRef.orderByChild("userB").equalTo(req.params.userId).once("value",function(snapshot){
+					 	if(snapshot.exists()){
+					 		var cntr=0;
+					 		for(key in snapshot.val()){
+					 			cntr++;
+					 			console.log("snapshot.val()[key].userA",snapshot.val()[key].userA);
+								usersWhoMatchedWithMe.push(snapshot.val()[key].userA);
+								if(cntr==lodash.size(snapshot.val())){
+									icb2();
+								}
+				    		}
+					 	}
+					 });
+				},function(icb3){
+					console.log("u i m with",usersIMatchedWith);
+					console.log("u w m with me",usersWhoMatchedWithMe);
+					includeThisUsers=intersection_destructive(usersIMatchedWith,usersWhoMatchedWithMe);
+					console.log("includeThisUsers.length",includeThisUsers.length);
+					icb3();
 				},function(callback){
 					console.log("step 2");
 					var count=0;
