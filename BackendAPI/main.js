@@ -46,6 +46,9 @@ const authMiddleware = (req, res, next) => {
 
 	try {
 		var decoded = jwt.verify(token,secretkey);
+        /*Logic fr checking*/
+
+        /*Logic for checking ends.*/
         req.decoded = decoded
         next()
 	} catch(err){
@@ -279,9 +282,34 @@ app.get('/test', function (req, res) {
 			});
 })
 
-app.get('/test1', function (req, res) {
+app.use('/test/',function(req,res,next){
+	console.log("test called");
+	next();
+});
+
+app.use('/test1/',function(req,res,next){
+	console.log("test 1 called");
+	next();
+});
+
+
+app.get('/test/test1', function (req, res) {
 	res.sendStatus(200);
 })
+
+app.get('/test1/test1', function (req, res) {
+	res.sendStatus(200);
+})
+
+app.get('/test/test2', function (req, res) {
+	res.sendStatus(200);
+})
+
+app.get('/test/test3', function (req, res) {
+	res.sendStatus(200);
+})
+
+
 
 function getFileExtension(fileurl) {
 	var arr = fileurl.split("?");
@@ -367,7 +395,7 @@ app.post('/users', function (req, res) {
 		console.log(newuser);
 		newuserref = usersRef.push();
 		newuser.objectId = newuserref.key;
-		newuser.jwt=makeJWT(objectId);
+		//newuser.jwt=makeJWT(objectId);
 		console.log("-----------key-----------", newuserref.key);
 		usersRef.child(newuserref.key).set(newuser, function (error) {
 			if (error)
@@ -435,7 +463,7 @@ function checkThumbnailBugs(userinfo) {
 }
 
 //3) UploadFilesForUser (It may be images or videos)
-app.post('/upload/:userid/:type', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 'thumbnailImage', maxCount: 1 }]), function (req, res) {
+app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 'thumbnailImage', maxCount: 1 }]), function (req, res) {
 	console.log("----------------API------03------------");
 	var userinfo = {};
 	console.log(req.body);
@@ -657,7 +685,7 @@ app.post('/upload/:userid/:type', upload.fields([{ name: 'uploadFile', maxCount:
 });
 
 //4) GetPreferencesByUserId or GetCurrentPreferences (userid)->preference
-app.get('/preferences/:userid', function (req, res) {
+app.get('/brizeo/preferences/:userid', function (req, res) {
 	console.log("----------------API------04------------");
 	preferencesRef.child(req.params.userid).once("value", function (snapshot) {
 		console.log(snapshot.val());
@@ -676,7 +704,7 @@ app.get('/preferences/:userid', function (req, res) {
 });
 
 //5) UpdateUserPreferencesInfo 
-app.put('/preferences/:userid', function (req, res) {
+app.put('/brizeo/preferences/:userid', function (req, res) {
 	console.log("----------------API------05------------");
 	preferencesRef.child(req.params.userid).set(req.body.newpref, function (error) {
 		if (error) {
@@ -688,7 +716,7 @@ app.put('/preferences/:userid', function (req, res) {
 });
 
 //6) updateUserInfo
-app.put('/users/:userid', function (req, res) {
+app.put('/brizeo/users/:userid', function (req, res) {
 	console.log("----------------API------06------------");
 	newuser = req.body.newuser;
 	console.log(req.params.userid);
@@ -712,9 +740,10 @@ var getUpSuperUserMoment = function (moments) {
 }
 
 //7) GetMomentsByUsedId (by default they are sorted 'newest') (userid, [popular, updated], filter)->[moments]
-app.get('/moments/:userid/:sort/:filter', function (req, res) {
+app.get('/brizeo/moments/:userid/:sort/:filter', function (req, res) {
 	console.log("----------------API------07------------");
 	console.log(req.headers['x-access-token']);
+	console.log("useeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeerId",req.headers['x-user-id']);
 	var sortstr = "updatedAt";
 	if (req.params.sort == "popular") {
 		sortstr = "numberOfLikes";
@@ -746,7 +775,7 @@ app.get('/moments/:userid/:sort/:filter', function (req, res) {
 });
 
 //8) GetAllMoments (we can combine this and the previous method in one)
-app.get('/moments/:sort/:filter', function (req, res) {
+app.get('/brizeo/moments/:sort/:filter', function (req, res) {
 	console.log("----------------API------08------------");
 	console.log(req.headers['x-access-token']);
 	var sortstr = "updatedAt";
@@ -805,7 +834,105 @@ app.get('/moments/:sort/:filter', function (req, res) {
 });
 
 //9) GetMatchedMomentsByUserId
-app.get('/matchedmoments/:userid/:sort/:filter', function (req, res) {
+app.get('/brizeo/matchedmoments/:userid/:sort/:filter', function (req, res) {
+	console.log("----------------API------09------------");
+	if (req.params.sort == "popular") {
+		sortstr = "numberOfLikes";
+	}
+	var filterstr = req.params.filter;
+	var usersIMatchedWith=[];
+	var usersWhoMatchedWithMe=[];
+	var arymoments = [];
+	var myMatches=[];
+	matchRef.orderByChild("userA").equalTo(req.params.userid)
+								.once("value",function(snapshot){
+									if(snapshot.exists()){
+									async.series([function(callback){
+										console.log("fn 1");
+										for(key in snapshot.val()){
+											usersIMatchedWith.push(snapshot.val()[key].userB);
+				   						 }
+				   					  callback(null,myMatches);
+									},function(icb2){
+										console.log("fn 2");
+										 matchRef.orderByChild("userB").equalTo(req.params.userid).once("value",function(snapshot){
+										 	if(snapshot.exists()){
+										 		var cntr=0;
+										 		for(key in snapshot.val()){
+										 			cntr++;
+										 			console.log("snapshot.val()[key].userA",snapshot.val()[key].userA);
+													usersWhoMatchedWithMe.push(snapshot.val()[key].userA);
+													if(cntr==lodash.size(snapshot.val())){
+														icb2();
+													}
+									    		}
+										 	}else{
+										 		res.json(arymoments);
+										 	}
+										 });	
+									},function(icb3){
+										console.log("u i m with",usersIMatchedWith);
+										console.log("u w m with me",usersWhoMatchedWithMe);
+										myMatches=intersection_destructive(usersIMatchedWith,usersWhoMatchedWithMe);
+										if(myMatches.length==0){
+											res.json(arymoments);
+										}
+										console.log("myMatches",myMatches);
+										icb3();
+									},function(icb4){
+										//include all moments of myMatches.
+										var cntr=0;
+										async.forEach(myMatches,function(curMatch,cb){
+											console.log("cuuuuuuuuurMatch",curMatch);
+											momentImagesRef.orderByChild("userId").equalTo(curMatch).once("value", function (snapshot) {
+												if (snapshot.exists()) {
+												console.log("inside match");
+													for(key in snapshot.val()){
+														arymoments.push(snapshot.val()[key]);
+													} 
+												 }
+												cntr++;
+												 if(cntr==myMatches.length){
+												     icb4();
+											     }	
+											});
+										});
+									},function(icb5){
+										console.log("step 5: Adding current Likers & User Object of person who uploaded moment");
+										var cntr=0;
+										if(arymoments.length==0){
+											res.json(arymoments);
+										}
+											async.forEach(arymoments,function(curMoment,cb){
+												usersRef.child(curMoment.userId).once("value", function (spo) {
+													console.log("user obj update");
+													curMoment["user"]=spo.val();
+														cntr++;
+														if(cntr==arymoments.length){
+															icb5();
+												      }
+												});
+
+											})
+									},function(icb6){
+										console.log("steeeeeeeep 6:::filter");
+										var sortstr = "updatedAt";
+										if (req.params.sort == "popular") {
+											sortstr = "numberOfLikes";
+										}
+										var filterstr = req.params.filter;
+										if (filterstr != "all"){
+											arymoments = lodash.filter(arymoments, { passionId: filterstr });
+										}
+										arymoments = lodash.sortBy(arymoments, sortstr).reverse();
+										res.json(arymoments);
+									}])
+									}else{
+										console.log("in elseeeeeee");
+										res.json(arymoments);
+									}
+	});
+/*
 	console.log("----------------API------09------------");
 	console.log(req.headers['x-access-token']);
 	var sortstr = "updatedAt";
@@ -845,10 +972,11 @@ app.get('/matchedmoments/:userid/:sort/:filter', function (req, res) {
 		});
 
 	});
+	*/
 });
 
 //10) CreateMoment
-app.put('/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 'thumbnailImage', maxCount: 1 }]), function (req, res) {
+app.put('/brizeo/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 'thumbnailImage', maxCount: 1 }]), function (req, res) {
 	console.log("----------------API------10------------");
 	// var newmoment = {
 	// 	userId: "Eqg4O5xfFp",
@@ -945,7 +1073,7 @@ app.put('/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 
 });
 
 //11) GetAllInterests (It means «travel», «foodie», etc.)
-app.get('/passions', function (req, res) {
+app.get('/brizeo/passions', function (req, res) {
 	console.log("----------------API------11------------");
 	passionsRef.once("value", function (snapshot) {
 		if (snapshot.exists()) {
@@ -957,7 +1085,7 @@ app.get('/passions', function (req, res) {
 });
 
 //12) GetLikersForMomentByMomentId
-app.get('/likemoments/users/:momentid/:userid', function (req, res) {
+app.get('/brizeo/likemoments/users/:momentid/:userid', function (req, res) {
 	console.log("----------------API------12------------");
 	var aryuser = [];
 	momentImageLikesRef.orderByChild("imageId").equalTo(req.params.momentid).once('value', function (snapshot) {
@@ -999,7 +1127,7 @@ app.get('/likemoments/users/:momentid/:userid', function (req, res) {
 });
 
 //13) ReportMoment
-app.post('/reportmoment/:momentid/:userid', function (req, res) {
+app.post('/brizeo/reportmoment/:momentid/:userid', function (req, res) {
 	console.log("----------------API------13------------");
 	var messageText = "";
 	usersRef.child(req.params.userid).once("value", function (snapshot) {
@@ -1031,7 +1159,7 @@ app.post('/reportmoment/:momentid/:userid', function (req, res) {
 });
 
 //14) GetNotificationsForUserId
-app.get('/notifications/:userid', function (req, res) {
+app.get('/brizeo/notifications/:userid', function (req, res) {
 	console.log("----------------API------14------------");
 	notificationRef.orderByChild("receiveUser").equalTo(req.params.userid).once('value', function (snapshot) {
 		var arynotification = []
@@ -1065,7 +1193,7 @@ app.get('/notifications/:userid', function (req, res) {
 });
 
 //15) GetUser
-app.get('/match/:userid1/:userid2', function (req, res) {
+app.get('/brizeo/match/:userid1/:userid2', function (req, res) {
 	console.log("----------------API------15------------");
 	getUserStatus(req.params.userid1, req.params.userid2).then(function (status) {
 		status1 = status;
@@ -1094,7 +1222,7 @@ app.get('/match/:userid1/:userid2', function (req, res) {
 });
 
 //16) LikeMoment
-app.put('/likemoments/:userid/:momentid', function (req, res) {
+app.put('/brizeo/likemoments/:userid/:momentid', function (req, res) {
 	console.log("----------------API------16------------");
 	var likemoment = {
 		imageId: req.params.momentid,
@@ -1147,7 +1275,7 @@ app.put('/likemoments/:userid/:momentid', function (req, res) {
 });
 
 //17) unlikeMoment
-app.delete('/likemoments/:userid/:momentid', function (req, res) {
+app.delete('/brizeo/likemoments/:userid/:momentid', function (req, res) {
 	console.log("----------------API------17------------");
 	momentImageLikesRef.orderByChild("userId").equalTo(req.params.userid).once('value', function (snapshot) {
 		if (snapshot.exists()) {
@@ -1181,7 +1309,7 @@ app.delete('/likemoments/:userid/:momentid', function (req, res) {
 });
 
 //18) DeleteMoment
-app.delete('/moments/:userid/:momentid', function (req, res) {
+app.delete('/brizeo/moments/:userid/:momentid', function (req, res) {
 	console.log("----------------API------18------------");
 	momentImagesRef.child(req.params.momentid).remove(function (error) {
 		if (error)
@@ -1192,7 +1320,7 @@ app.delete('/moments/:userid/:momentid', function (req, res) {
 });
 
 //19) ReportUser
-app.post('/reportuser/:userid1/:userid2', function (req, res) {
+app.post('/brizeo/reportuser/:userid1/:userid2', function (req, res) {
 	console.log("----------------API------19------------");
 	var messageText = "";
 	var currenttime = new Date().toISOString();
@@ -1223,7 +1351,7 @@ app.post('/reportuser/:userid1/:userid2', function (req, res) {
 });
 
 //20) DownloadEvent
-app.post('/downloadevent/:userid1/:times', function (req, res) {
+app.post('/brizeo/downloadevent/:userid1/:times', function (req, res) {
 	console.log("----------------API------20------------");
 	var messageText = "";
 	var date = new Date().toISOString();
@@ -1471,13 +1599,13 @@ var likeunlikeMatch = function (req, res, status) {
 	});
 }
 //21) ApproveMatch
-app.post('/match/:userid1/:userid2', function (req, res) {
+app.post('/brizeo/match/:userid1/:userid2', function (req, res) {
 	console.log("----------------API------21------------");
 	likeunlikeMatch(req, res, 1);
 });
 
 //22) Decline match
-app.delete('/match/:userid1/:userid2', function (req, res) {
+app.delete('/brizeo/match/:userid1/:userid2', function (req, res) {
 	console.log("----------------API------22------------");
 	likeunlikeMatch(req, res, 0);
 });
@@ -1505,7 +1633,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 //23) GetUsersForMatch
-app.get('/approveuserformatch/:userid', function (req, res) {
+app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 	console.log("----------------API------23------------");
 	usersRef.child(req.params.userid).once("value", function (snapshot) {
 		console.log("user exists");
@@ -1601,7 +1729,7 @@ app.get('/approveuserformatch/:userid', function (req, res) {
 });
 
 //24) GetMatchesForUser
-app.get('/approvematchforuser/:userid', function (req, res) {
+app.get('/brizeo/approvematchforuser/:userid', function (req, res) {
 /*	
 	console.log("----------------API------24------------");
 	console.log("userB matching id is ",req.params.userid);
@@ -1722,7 +1850,7 @@ app.get('/approvematchforuser/:userid', function (req, res) {
 });
 
 //25) GetCountriesForUser
-app.get('/countries/:userid', function (req, res) {
+app.get('/brizeo/countries/:userid', function (req, res) {
 	console.log("----------------API------25------------");
 	usersRef.child(req.params.userid + "/countries").once("value", function (snapshot) {
 		console.log(snapshot.val());
@@ -1735,7 +1863,7 @@ app.get('/countries/:userid', function (req, res) {
 });
 
 //26) AddUserCountriesForUser
-app.put('/countries/:userid', function (req, res) {
+app.put('/brizeo/countries/:userid', function (req, res) {
 	console.log("----------------API------26------------");
 	usersRef.child(req.params.userid).once("value", function (snapshot) {
 		if (snapshot.exists()) {
@@ -1764,7 +1892,7 @@ app.put('/countries/:userid', function (req, res) {
 });
 
 //27) DeleteCountryForUser
-app.delete('/countries/:userid', function (req, res) {
+app.delete('/brizeo/countries/:userid', function (req, res) {
 	console.log("----------------API------27------------");
 	usersRef.child(req.params.userid).once("value", function (snapshot) {
 		if (snapshot.exists()) {
@@ -1793,7 +1921,7 @@ app.delete('/countries/:userid', function (req, res) {
 });
 
 //28) Get a event by userid
-app.get('/events/:userid', function (req, res) {
+app.get('/brizeo/events/:userid', function (req, res) {
 	console.log("----------------API------28------------");
 	eventsRef.orderByChild("ownerUser").equalTo(req.params.userid).once("value", function (snapshot) {
 		var events = [];
@@ -1820,7 +1948,7 @@ app.get('/events/:userid', function (req, res) {
 });
 
 //29) Get a moment by id
-app.get('/moments/:momentid', function (req, res) {
+app.get('/brizeo/moments/:momentid', function (req, res) {
 	console.log("----------------API------29------------");
 	momentImagesRef.child(req.params.momentid).once("value", function (snapshot) {
 		if (snapshot.exists())
@@ -1831,7 +1959,7 @@ app.get('/moments/:momentid', function (req, res) {
 });
 
 //30 Update moment
-app.put('/moments/:momentid', function (req, res) {
+app.put('/brizeo/moments/:momentid', function (req, res) {
 	console.log("----------------API------30------------");
 	momentImagesRef.child(req.params.momentid).update(req.body.newmoment, function (error) {
 		if (error)
@@ -1842,7 +1970,7 @@ app.put('/moments/:momentid', function (req, res) {
 });
 
 //31 Get Mutual friends
-app.get('/mutual_friends/:userid/:accessToken', function (req, appRes) {
+app.get('/brizeo/mutual_friends/:userid/:accessToken', function (req, appRes) {
 	var accessToken = req.params.accessToken;
 	var userid = req.params.userid;
 	FB.setAccessToken(accessToken);
@@ -1865,7 +1993,7 @@ app.get('/mutual_friends/:userid/:accessToken', function (req, appRes) {
 })
 
 //32 save new event data
-app.post('/events', function (req, res) {
+app.post('/brizeo/events', function (req, res) {
 	console.log("----------------API------32------------");
 	async.forEach(req.body.newevents, function (newevent, callback) {
 	/*Step 1: check if event exists, if yes then remove event*/
@@ -1903,7 +2031,7 @@ app.post('/events', function (req, res) {
 });
 
 //33 Update notification
-app.put('/notifications/:notificationid', function (req, res) {
+app.put('/brizeo/notifications/:notificationid', function (req, res) {
 	console.log("----------------API------33------------");
 	notificationRef.child(req.params.notificationid).update(req.body.newnotification, function (error) {
 		if (error)
@@ -1914,7 +2042,7 @@ app.put('/notifications/:notificationid', function (req, res) {
 });
 
 //34) getEvents
-app.put('/allevents/:sort', function (req, res) {
+app.put('/brizeo/allevents/:sort', function (req, res) {
 	console.log("----------------API------34 get all Events------------");
 	var searchedevents = [];
 	var sortstr = "distance";
@@ -1967,7 +2095,7 @@ app.put('/allevents/:sort', function (req, res) {
 });
 
 	//35) get valid fbusers
-app.post('/fbusers', function (req, res) {
+app.post('/brizeo/fbusers', function (req, res) {
         console.log("----------------API------35 Valid FB Users------------");
         var fbids = req.body.fbids;
         var validusers = [];
@@ -1989,7 +2117,7 @@ app.post('/fbusers', function (req, res) {
 /*
 THis method returns events matched by userId.
 */
-app.put('/events-by-user/:userId/:sort',function(req,res){
+app.put('/brizeo/events-by-user/:userId/:sort',function(req,res){
 	var userId = req.params.userId;
 	
 	var sort=req.params.sort;
@@ -2092,7 +2220,7 @@ app.put('/events-by-user/:userId/:sort',function(req,res){
 							    }
 							})
 						},function(err){
-							console.log("Error getting location from geo map");
+							console.log("Error getting location from geo map",err);
 							res.json(userInvolvingEvents);
 						});
 						callback(null,3);
@@ -2106,7 +2234,7 @@ app.put('/events-by-user/:userId/:sort',function(req,res){
 });
 
 /*37 Delete User.*/
-app.get('/delete-user/:userId',function(req,res){
+app.get('/brizeo/delete-user/:userId',function(req,res){
 	var userId = req.params.userId;
 	//delete moments pics.
 	async.series([function(callback){
@@ -2142,7 +2270,7 @@ app.get('/delete-user/:userId',function(req,res){
 
 
 /*38 Get Matched Events for user : Events of User's Matches Where user's events are not there.*/
-app.put('/events-by-users-matches/:userId/:sort',function(req,res){
+app.put('/brizeo/events-by-users-matches/:userId/:sort',function(req,res){
 	var userId = req.params.userId;
 	
 	var sort=req.params.sort;
@@ -2186,6 +2314,8 @@ app.put('/events-by-users-matches/:userId/:sort',function(req,res){
 									icb2();
 								}
 				    		}
+					 	}else{
+					 		res.json(userInvolvingEvents);
 					 	}
 					 });
 				},function(icb3){
@@ -2260,6 +2390,7 @@ app.put('/events-by-users-matches/:userId/:sort',function(req,res){
 						//adding location name.
 						console.log("step 5");
 						var eventCounter=0;
+						console.log("userInvolvingEvents",userInvolvingEvents);
 						async.forEach(userInvolvingEvents,function(event,ib1){
 							Wreck.get('http://maps.googleapis.com/maps/api/geocode/json?latlng='+event.latitude+","+event.longitude+"&sensor=true",
 								(err,Wres,payload)=>{
@@ -2301,11 +2432,13 @@ app.put('/events-by-users-matches/:userId/:sort',function(req,res){
 							})
 						},function(err){
 							console.log("Error getting location from geo map");
+							res.json(userInvolvingEvents);
 						});
 					}
 				]);
 	       }else{
-	       	    res.sendStatus(404);
+	       		res.json(userInvolvingEvents);
+	       	    //res.sendStatus(404);
 	       }
      })
 });       
