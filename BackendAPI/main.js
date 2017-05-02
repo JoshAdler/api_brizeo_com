@@ -28,37 +28,6 @@ var app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-
-
-var secretkey = "SeCrEtKeYfOrHaShInG";
-const authMiddleware = (req, res, next) => {
-    // read the token from header or url 
-    const token = req.headers['x-access-token'] || req.query.token;
-    const userId=req.headers['x-user-id'] || req.query.user-id;
-
-    // token does not exist
-    if(!token) {
-        return res.status(403).json({
-            success: false,
-            message: 'not logged in'
-        })
-    }
-
-	try {
-		var decoded = jwt.verify(token,secretkey);
-        /*Logic fr checking*/
-
-        /*Logic for checking ends.*/
-        req.decoded = decoded
-        next()
-	} catch(err){
-        res.status(403).json({
-            success: false,
-            message: error.message
-        })
-	}
-}
-
 function makeJWT(username) {
 	var token = jwt.sign(
 		{
@@ -75,10 +44,6 @@ function makeJWT(username) {
 //app.use(bodyParser.json({limit: '50mb'}));
 //app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
 
-/*
-Adding auth request for all
-*/
-//app.use(authMiddleware);
 
 
 firebase.initializeApp({
@@ -157,6 +122,49 @@ var newpref = {
 };
 
 var superUserId = "WlsuoQxwUB";
+
+
+var secretkey = "SeCrEtKeYfOrHaShInG";
+const authMiddleware = (req, res, next) => {
+    // read the token from header or url 
+    console.log("req",req.originalUrl);
+    const token = req.headers['x-access-token'] || req.query.token;
+    const userId=req.headers['x-user-id'] || req.query["user-id"];
+
+    // token does not exist
+    if(!token || !userId) {
+    	console.log("================================missing user id & Token======================================");
+        return res.status(403).json({
+            success: false,
+            message: 'not logged in'
+        })
+    }
+
+	try {
+		var decoded = jwt.verify(token,secretkey);
+		if(decoded.username==userId){
+			req.decoded=decoded;
+			console.log("succcccccccccces");
+			next();
+		}else{
+				console.log("=========tokens mismatch========");
+				res.json({
+	        	status:403,
+	            success: false,
+	            message:"Invalid Token"
+	        })	
+		}
+        /*Logic for checking ends.*/
+	} catch(err){
+     	console.log("errrrrrrrrrrrror",err);
+        res.json({
+        	status:403,
+            success: false,
+            message: err.message
+        })
+	}
+}
+
 
 var getUserStatus = function (userid1, userid2) {
 	return new Promise(function (resolve, reject) {
@@ -282,32 +290,11 @@ app.get('/test', function (req, res) {
 			});
 })
 
-app.use('/test/',function(req,res,next){
-	console.log("test called");
-	next();
+
+app.use('/brizeo/',function(req,res,next){
+	console.log("common Auth Function called");
+	authMiddleware(req,res,next);
 });
-
-app.use('/test1/',function(req,res,next){
-	console.log("test 1 called");
-	next();
-});
-
-
-app.get('/test/test1', function (req, res) {
-	res.sendStatus(200);
-})
-
-app.get('/test1/test1', function (req, res) {
-	res.sendStatus(200);
-})
-
-app.get('/test/test2', function (req, res) {
-	res.sendStatus(200);
-})
-
-app.get('/test/test3', function (req, res) {
-	res.sendStatus(200);
-})
 
 
 
@@ -395,7 +382,7 @@ app.post('/users', function (req, res) {
 		console.log(newuser);
 		newuserref = usersRef.push();
 		newuser.objectId = newuserref.key;
-		//newuser.jwt=makeJWT(objectId);
+		newuser.jwt=makeJWT(newuser.objectId);
 		console.log("-----------key-----------", newuserref.key);
 		usersRef.child(newuserref.key).set(newuser, function (error) {
 			if (error)
@@ -428,7 +415,7 @@ app.post('/users', function (req, res) {
 
 //2) GetCurrentUser (userid)->user
 app.get('/users/:fbid', function (req, res) {
-	console.log("----------------API------02------------");
+	console.log("----------------API------02------------",req.params.fbid);
 	usersRef.orderByChild("facebookId").equalTo(req.params.fbid).once("value", function (snapshot) {
 		console.log(snapshot.val());
 		if (snapshot.exists()) {
@@ -465,6 +452,7 @@ function checkThumbnailBugs(userinfo) {
 //3) UploadFilesForUser (It may be images or videos)
 app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 'thumbnailImage', maxCount: 1 }]), function (req, res) {
 	console.log("----------------API------03------------");
+	console.log("==========================================================#3===image start================"+new Date());
 	var userinfo = {};
 	console.log(req.body);
 	console.log(req.params);
@@ -496,8 +484,10 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 								console.log("step25");
 								if (error)
 									res.sendStatus(500)
-								else
+								else{
+									console.log("===================================#3=========================image end================"+new Date());
 									res.send(userinfo);
+								}
 							})
 						} else
 							res.sendStatus(500);
@@ -742,8 +732,13 @@ var getUpSuperUserMoment = function (moments) {
 //7) GetMomentsByUsedId (by default they are sorted 'newest') (userid, [popular, updated], filter)->[moments]
 app.get('/brizeo/moments/:userid/:sort/:filter', function (req, res) {
 	console.log("----------------API------07------------");
-	console.log(req.headers['x-access-token']);
-	console.log("useeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeerId",req.headers['x-user-id']);
+	var loggedInUserId=req.headers['x-user-id'];
+	var userIdInQuestion=req.params.userid;
+	var viewableCheck=true;
+	if(loggedInUserId==userIdInQuestion){
+		viewableCheck=false;
+	}
+	
 	var sortstr = "updatedAt";
 	if (req.params.sort == "popular") {
 		sortstr = "numberOfLikes";
@@ -753,21 +748,38 @@ app.get('/brizeo/moments/:userid/:sort/:filter', function (req, res) {
 		var moments = [];
 		if (snapshot.exists()) {
 			moments = snapshot.val();
-			console.log(moments);
 			if (filterstr != "all")
 				moments = lodash.filter(moments, { passionId: filterstr });
 			moments = lodash.sortBy(moments, sortstr).reverse();
-			console.log(moments);
 
 			usersRef.child(req.params.userid).once("value", function (snapshot) {
 				if (snapshot.exists()) {
-					moments.forEach(function (moment) {
+					var filteredMoments=[];
+					moments.forEach(function (moment,index,object) {
 						moment.user = snapshot.val();
+						if(viewableCheck==true){
+							console.log(moment.viewableByAll);
+							var oldMoment=false;
+							if(moment.hasOwnProperty("viewableByAll")==false){
+								oldMoment=true;
+							}
+							if(moment.viewableByAll=="true"|| oldMoment==true || moment.viewableByAll==true){
+								console.log("inside splice"+index);
+								filteredMoments.push(moment);
+							}
+						}
 					});
 				}
-				res.send(moments)
+				if(filteredMoments && filteredMoments.length>0){
+					console.log("filtered length",filteredMoments.length);
+					res.send(filteredMoments);
+				}else{
+					console.log("all moments=",moments.length);
+					res.send(moments)
+				}
 			});
 		} else {
+			console.log("404 found");
 			res.send(moments);
 			return;
 		}
@@ -789,28 +801,49 @@ app.get('/brizeo/moments/:sort/:filter', function (req, res) {
 		momentImagesRef.orderByChild("passionId").equalTo(filterstr).once("value", function (snapshot) {
 			if (snapshot.exists())
 				moments = lodash.sortBy(snapshot.val(), sortstr).reverse();
-
+			var filteredArr=[];
 			async.forEach(moments, function (moment, callback) {
+				var isViewableByAll=moment.viewableByAll;
+				if(moment.hasOwnProperty("viewableByAll")==false){
+					isViewableByAll=true;
+				}
 				if (moment.hasOwnProperty("userId")) {
 					usersRef.child(moment.userId).once("value", function (snapshot) {
-						if (snapshot.exists()) moment.user = snapshot.val();
+						if (snapshot.exists()){
+							moment.user = snapshot.val();
+						}
 						callback();
 					});
-				} else
+				}else{
 					callback();
+				}
+				if(isViewableByAll==true || isViewableByAll=="true"){
+					filteredArr.push(moment);
+				}
+
 			}, function (err) {
+				console.log("called after filter, filterstring not equals all");
 				if (req.params.sort == "popular")
-					res.send(getUpSuperUserMoment(moments));
+					res.send(getUpSuperUserMoment(filteredArr));
 				else
-					res.send(moments);
+					res.send(filteredArr);
 			});
 		});
 	} else {
+		console.log("all filters===========================================");
 		momentImagesRef.orderByChild(sortstr).once("value", function (snapshot) {
 			if (snapshot.exists()) {
 				snapshot.forEach(function (moment) {
-					moments.push(moment.val());
+					var forOldImages=false;
+					if(moment.val().hasOwnProperty("viewableByAll")==false){
+						forOldImages=true;
+					}
+
+					if(moment.val()["viewableByAll"]=="true" || forOldImages==true || moment.val()["viewableByAll"]==true){
+						moments.push(moment.val());
+					}
 				});
+				console.log("-========moments length"+moments.length);
 				moments = moments.reverse();
 
 				async.forEach(moments, function (moment, callback) {
@@ -828,6 +861,8 @@ app.get('/brizeo/moments/:sort/:filter', function (req, res) {
 					else
 						res.send(moments);
 				});
+			}else{
+				console.log("no resultds");
 			}
 		});
 	}
@@ -982,7 +1017,7 @@ app.put('/brizeo/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, {
 	// 	userId: "Eqg4O5xfFp",
 	// 	readStatus: true
 	// }
-
+	console.log("==================================================================image start================"+new Date());
 	newmoment = req.body.newmoment;
 	newmoment.numberOfLikes = 0;
 
@@ -1067,6 +1102,7 @@ app.put('/brizeo/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, {
 				res.status(500).end();
 			} else {
 				res.send(newmomentref.key).end();
+			console.log("==================================================================image end================"+new Date());
 			}
 		});
 	});
@@ -1674,6 +1710,7 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 							/*search criteriass*/
 							var searchTest=false;
 							if(usr.currentLocation){
+								usr["distance"]=calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"],searchLocation.latitude, searchLocation.longitude);
 								searchTest=calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"],searchLocation.latitude, searchLocation.longitude) < distance;
 							}
 								var minAgeTest=usr.age >= minage;
@@ -1687,9 +1724,12 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 									}
 								}
 						},function(err){
+							console.log("err called");
+							aryuser=lodash.sortBy(aryuser,"distance");
 							res.send(aryuser);
 						});
 						console.log(aryuser.length);
+						aryuser=lodash.sortBy(aryuser,"distance");
 						res.json(aryuser);
 					}
 				});
@@ -1828,13 +1868,11 @@ app.get('/brizeo/approvematchforuser/:userid', function (req, res) {
 				}
 				async.forEach(myMatchesId,function(match,callback){
 					usersRef.child(match).once("value", function (sn) {
-						finalCntr++;
 						if(sn.exists()){
 							myMatches.push(sn.val());
-						}else{
-							res.json(myMatches);
 						}
 						/*returning response strts*/
+						finalCntr++;
 						console.log("finalCntr",finalCntr);
 						console.log("myMatches",myMatchesId.length);
 						if(finalCntr==myMatchesId.length){
