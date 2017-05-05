@@ -2471,7 +2471,8 @@ app.put('/brizeo/events-by-users-matches/:userId/:sort',function(req,res){
 												}
 												if(finalCounter == userInvolvingEvents.length){
 													console.log("before sending");
-													res.json(userInvolvingEvents);
+											//adding filter on date.
+													res.json(lodash.sortBy(userInvolvingEvents,"startDate"));
 												  }
 											});
 										});
