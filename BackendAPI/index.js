@@ -1,13 +1,15 @@
 var firebase = require('firebase-admin');
 var firebasestor = require('firebase');
 
-var serviceAccount = require("./brizeo-7571c-firebase-adminsdk.json");
+var serviceAccount = require("./dev_configs/brizeo-development-bf561-firebase-adminsdk-2bzrp-5ccecab264.json");
 //var serviceAccount = require("./fir-test1-7cb44-firebase-adminsdk-4mixq-144aafe9a8.json");
+
+//db URL ::: https://brizeo-development-bf561.firebaseio.com/
 
 firebase.initializeApp({
   credential: firebase.credential.cert(serviceAccount),
-  databaseURL: 'https://brizeo-7571c.firebaseio.com',
-  storageBucket: "gs://brizeo-7571c.appspot.com"
+  databaseURL: 'https://brizeo-development-bf561.firebaseio.com',
+  storageBucket: "gs://brizeo-development-bf561.appspot.com"
 
 });
 

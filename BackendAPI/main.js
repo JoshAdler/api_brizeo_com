@@ -21,7 +21,7 @@ var Wreck = require('wreck');
 
 FB.setApiVersion("v2.8");
 
-var serviceAccount = require("./brizeo-7571c-firebase-adminsdk.json");
+var serviceAccount = require("./dev_configs/brizeo-development-bf561-firebase-adminsdk-2bzrp-5ccecab264.json");
 //var serviceAccount = require("./fir-test1-7cb44-firebase-adminsdk-4mixq-144aafe9a8.json");
 var app = express();
 
@@ -48,20 +48,17 @@ function makeJWT(username) {
 
 firebase.initializeApp({
 	credential: firebase.credential.cert(serviceAccount),
-	databaseURL: 'https://brizeo-7571c.firebaseio.com'
+	databaseURL: 'https://brizeo-development-bf561.firebaseio.com'
 	//	databaseURL: 'https://fir-test1-7cb44.firebaseio.com/'
 });
 
 
-
-
-
 var gcs = require('@google-cloud/storage')({
-	projectId: "brizeo-7571c",
-	keyFilename: './brizeo-7571c-firebase-adminsdk.json',
+	projectId: "brizeo-development-bf561",
+	keyFilename: './dev_configs/brizeo-development-bf561-firebase-adminsdk-2bzrp-5ccecab264.json',
 });
 
-var bucket = gcs.bucket('brizeo-7571c.appspot.com');
+var bucket = gcs.bucket('brizeo-development-bf561.appspot.com');
 
 
 
@@ -201,13 +198,19 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 		if (!snapshot.exists()) return;
 		var sendtext = "";
 		var soundType="";
+/*First name Only logic*/
+		var displayName=snapshot.val().displayName;
+		if(displayName.split(" ").length>1){
+			displayName=displayName.split(" ")[0];
+		}
+/*First name Only logic endsss.*/		
 		if (type == "newmatch") {
 			newnotification.newmatchid = id;
-			sendtext = snapshot.val().displayName + " matched you.";
+			sendtext = displayName + " matched you.";
 			soundType="sound_matches.wav";
 		} else if (type == "momentslike") {
 			newnotification.momentsid = id;
-			sendtext = snapshot.val().displayName + " liked your moment."
+			sendtext = displayName + " liked your moment."
 			soundType="sound_likes.wav";
 		}
 
@@ -290,13 +293,13 @@ app.get('/test', function (req, res) {
 			});
 })
 
-
+/*
 app.use('/brizeo/',function(req,res,next){
 	console.log("common Auth Function called");
 	authMiddleware(req,res,next);
 });
 
-
+*/
 
 function getFileExtension(fileurl) {
 	var arr = fileurl.split("?");
