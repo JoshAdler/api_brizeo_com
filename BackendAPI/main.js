@@ -1178,23 +1178,32 @@ app.post('/brizeo/reportmoment/:momentid/:userid', function (req, res) {
 	usersRef.child(req.params.userid).once("value", function (snapshot) {
 		console.log(snapshot.val());
 		if (snapshot.exists()) {
-			messageText = "User mail : " + snapshot.val().objectId + ", Name : " + snapshot.val().displayName;
+			messageText = "User Id : " + snapshot.val().objectId + ", Name : " + snapshot.val().displayName+"["+snapshot.val().email+"]";
 			momentImagesRef.child(req.params.momentid).once("value", function (snapshot) {
 				console.log(snapshot.val());
 				if (snapshot.exists()) {
-					messageText += " reported " + "image : " + snapshot.val().momentsUploadImage;
+					messageText += " reported " + "image '"+snapshot.val().momentDescription +"' [" + snapshot.val().momentsUploadImage + "] with id "+snapshot.val().objectId + " At time:- "+new Date();
 					mailOptions.text = messageText;
-					console.log(messageText);
-					smtpTransport.sendMail(mailOptions, function (error, response) {
-						if (error) {
-							console.log(error);
-							res.status(500).end();
-						} else {
-							console.log("Message sent : " + response.response);
-							res.status(200).end();
+
+					usersRef.child(snapshot.val().userId).once('value',function(sp){
+						if(sp.exists()){
+							messageText+=" uploaded by: " +sp.val().displayName +"["+sp.val().email+"]";
+							console.log(messageText);
+							mailOptions.text=messageText;
+							
+							smtpTransport.sendMail(mailOptions, function (error, response) {
+								if (error) {
+									console.log(error);
+									res.status(500).end();
+								} else {
+									console.log("Message sent : " + response.response);
+									res.status(200).end();
+								}
+								smtpTransport.close();
+							});
 						}
-						smtpTransport.close();
-					});
+					})
+
 				} else
 					res.status(404).end();
 			});
