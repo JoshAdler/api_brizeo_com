@@ -1190,7 +1190,7 @@ app.post('/brizeo/reportmoment/:momentid/:userid', function (req, res) {
 							messageText+=" uploaded by: " +sp.val().displayName +"["+sp.val().email+"]";
 							console.log(messageText);
 							mailOptions.text=messageText;
-							
+
 							smtpTransport.sendMail(mailOptions, function (error, response) {
 								if (error) {
 									console.log(error);
@@ -1368,8 +1368,19 @@ app.delete('/brizeo/moments/:userid/:momentid', function (req, res) {
 	momentImagesRef.child(req.params.momentid).remove(function (error) {
 		if (error)
 			res.status(404).end();
-		else
-			res.status(200).end();
+		else{
+			/*logic for removing norifications*/
+				notificationRef.orderByChild("momentsid").equalTo(req.params.momentid).once('value', function (snapshot) {
+					if(snapshot.exists()){
+						for(key in snapshot.val()){
+							notificationRef.child(key).remove();
+							//eventsRef.ref.remove();
+						}
+						res.status(200).end();
+					}
+				})
+			/*logic for removing notifications*/
+		}
 	});
 });
 
