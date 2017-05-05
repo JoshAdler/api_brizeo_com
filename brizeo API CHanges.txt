@@ -1,0 +1,7 @@
+API #8 Change: 
+Example 
+localhost:4000/brizeo/allmoments/popular/all/2
+
+1. moments---->allmoments
+2. added page number at end 
+Example : /1,/2,/3
