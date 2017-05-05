@@ -790,10 +790,11 @@ app.get('/brizeo/moments/:userid/:sort/:filter', function (req, res) {
 });
 
 //8) GetAllMoments (we can combine this and the previous method in one)
-app.get('/brizeo/moments/:sort/:filter', function (req, res) {
+app.get('/brizeo/allmoments/:sort/:filter/:pageNo', function (req, res) {
 	console.log("----------------API------08------------");
 	console.log(req.headers['x-access-token']);
 	var sortstr = "updatedAt";
+	var pageNo=parseInt(req.params.pageNo);
 	if (req.params.sort == "popular") {
 		sortstr = "numberOfLikes";
 	}
@@ -826,15 +827,19 @@ app.get('/brizeo/moments/:sort/:filter', function (req, res) {
 
 			}, function (err) {
 				console.log("called after filter, filterstring not equals all");
-				if (req.params.sort == "popular")
+				if (req.params.sort == "popular"){
+					console.log((getUpSuperUserMoment(filteredArr)).length);
 					res.send(getUpSuperUserMoment(filteredArr));
-				else
+				}
+				else{
+					console.log(filteredArr.length);
 					res.send(filteredArr);
+				}
 			});
 		});
 	} else {
 		console.log("all filters===========================================");
-		momentImagesRef.orderByChild(sortstr).once("value", function (snapshot) {
+		momentImagesRef.orderByChild(sortstr).startAt(pageNo).endAt(pageNo).once("value", function (snapshot) {
 			if (snapshot.exists()) {
 				snapshot.forEach(function (moment) {
 					var forOldImages=false;
@@ -866,6 +871,7 @@ app.get('/brizeo/moments/:sort/:filter', function (req, res) {
 				});
 			}else{
 				console.log("no resultds");
+				res.send(moments);
 			}
 		});
 	}
