@@ -1035,17 +1035,17 @@ app.put('/brizeo/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, {
 	newmoment.numberOfLikes = 0;
 
 	var upFiles = [];
-
+console.log("================req.files['uploadFile']"+req.files['uploadFile']);
 	if (req.files['uploadFile'] != undefined) {
 		console.log("main");
 		upFiles = req.files['uploadFile'];
 	}
-
+console.log("===============req.files['thumbnailImage']"+req.files['thumbnailImage']);
 	if (req.files['thumbnailImage'] != undefined) {
 		console.log("other");
 		upFiles = upFiles.concat(req.files['thumbnailImage']);
 	}
-
+console.log("==============upFIles====================="+upFiles);
 	async.forEach(upFiles, function (upFile, callback) {
 		console.log(upFile);
 		if (fs.statSync(__dirname + "/" + upFile.path).isFile()) {
