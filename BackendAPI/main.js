@@ -365,9 +365,9 @@ app.post('/users', function (req, res) {
 
 						file.makePublic().then(function (data) {
 							if (newuser['mainProfileImage'] != undefined && newuser['mainProfileImage'] == downUrl)
-								newuser.mainProfileImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+								newuser.mainProfileImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
 							else {
-								newuser.otherProfileImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+								newuser.otherProfileImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
 								newuser.thumbnailImages.push("");
 							}
 							callback();
@@ -524,7 +524,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 
 							file.makePublic().then(function (data) {
 								if (req.params.type == "main") {
-									userinfo.mainProfileImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+									userinfo.mainProfileImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
 									thumbnail.ensureThumbnail(upFile.filename + "." + exten, 1000, null, function (err, filename) {
 										console.log("----err----", err);
 										if (!err) {
@@ -537,7 +537,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 													console.log("thumbnail bucket upload success");
 													console.log("step52");
 													file.makePublic().then(function (data) {
-														userinfo.mainthumbnailImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+														userinfo.mainthumbnailImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
 														callback();
 													});
 												}
@@ -553,7 +553,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 										userinfo.otherProfileImages = [];
 										userinfo.thumbnailImages = [];
 										if (upFile.fieldname == "uploadFile") {
-											userinfo.otherProfileImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+											userinfo.otherProfileImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
 											if (req.files['thumbnailImage'] == undefined) {
 												thumbnail.ensureThumbnail(upFile.filename + "." + exten, 400, null, function (err, filename) {
 													console.log("----err----", err);
@@ -567,7 +567,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 																console.log("thumbnail bucket upload success");
 																console.log("step52");
 																file.makePublic().then(function (data) {
-																	userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+																	userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
 																	callback();
 																});
 															}
@@ -580,7 +580,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 												callback();
 										}
 										else {
-											userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+											userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
 											callback();
 										}
 									} else {
@@ -590,7 +590,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 										if (req.body.oldurl == undefined) {
 											console.log("step8");
 											if (upFile.fieldname == "uploadFile") {
-												userinfo.otherProfileImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+												userinfo.otherProfileImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
 												if (req.files['thumbnailImage'] == undefined) {
 													thumbnail.ensureThumbnail(upFile.filename + "." + exten, 400, null, function (err, filename) {
 														console.log("----err----", err);
@@ -604,7 +604,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 																	console.log("thumbnail bucket upload success");
 																	console.log("step52");
 																	file.makePublic().then(function (data) {
-																		userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+																		userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
 																		callback();
 																	});
 																}
@@ -617,7 +617,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 													callback();
 											}
 											else {
-												userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name);
+												userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
 												callback();
 											}
 
@@ -626,7 +626,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 											indexToDel = userinfo.otherProfileImages.indexOf(req.body.oldurl);
 											if (indexToDel != -1) {
 												if (upFile.fieldname == "uploadFile") {
-													userinfo.otherProfileImages[indexToDel] = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+													userinfo.otherProfileImages[indexToDel] = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
 													if (req.files['thumbnailImage'] == undefined) {
 														thumbnail.ensureThumbnail(upFile.filename + "." + exten, 400, null, function (err, filename) {
 															console.log("----err----", err);
@@ -640,7 +640,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 																		console.log("thumbnail bucket upload success");
 																		console.log("step52");
 																		file.makePublic().then(function (data) {
-																			userinfo.thumbnailImages[indexToDel] = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+																			userinfo.thumbnailImages[indexToDel] = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
 																			callback();
 																		});
 																	}
@@ -652,7 +652,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 													} else
 														callback();
 												} else {
-													userinfo.thumbnailImages[indexToDel] = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+													userinfo.thumbnailImages[indexToDel] = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
 													callback();
 												}
 											}
@@ -1065,7 +1065,7 @@ app.put('/brizeo/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, {
 
 					file.makePublic().then(function (data) {
 						if (upFile.fieldname == "uploadFile") {
-							newmoment.momentsUploadImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+							newmoment.momentsUploadImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
 							if (req.files['thumbnailImage'] == undefined) {
 								console.log("step51")
 								thumbnail.ensureThumbnail(upFile.filename + "." + exten, 1000, null, function (err, filename) {
@@ -1080,7 +1080,7 @@ app.put('/brizeo/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, {
 												console.log("thumbnail bucket upload success");
 												console.log("step52");
 												file.makePublic().then(function (data) {
-													newmoment.thumbnailImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+													newmoment.thumbnailImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
 													callback();
 												});
 											}
@@ -1092,7 +1092,7 @@ app.put('/brizeo/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, {
 							} else
 								callback();
 						} else {
-							newmoment.thumbnailImage = "https://storage.googleapis.com/brizeo-7571c.appspot.com/" + file.name;
+							newmoment.thumbnailImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
 							callback();
 						}
 					});
