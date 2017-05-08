@@ -838,8 +838,8 @@ app.get('/brizeo/allmoments/:sort/:filter/:pageNo', function (req, res) {
 			});
 		});
 	} else {
-		console.log("all filters===========================================");
-		momentImagesRef.orderByChild(sortstr).startAt(pageNo).endAt(pageNo).once("value", function (snapshot) {
+		console.log("all filters===========================================",sortstr,pageNo);
+		momentImagesRef.orderByChild(sortstr).once("value", function (snapshot) {
 			if (snapshot.exists()) {
 				snapshot.forEach(function (moment) {
 					var forOldImages=false;
@@ -864,10 +864,14 @@ app.get('/brizeo/allmoments/:sort/:filter/:pageNo', function (req, res) {
 						callback();
 				}, function (err) {
 					console.log(moments.length)
-					if (req.params.sort == "popular")
+					if (req.params.sort == "popular"){
+						moments=getPaginatedItems(moments,pageNo);
 						res.send(getUpSuperUserMoment(moments));
-					else
+					}
+					else{
+						moments=getPaginatedItems(moments,pageNo);
 						res.send(moments);
+					}
 				});
 			}else{
 				console.log("no resultds");
@@ -2553,6 +2557,15 @@ function intersection_destructive(a, b)
     }
   }
   return result;
+}
+
+
+function getPaginatedItems(items, page) {
+	var page = page || 1,
+	    per_page = 35,
+	    offset = (page - 1) * per_page,
+	    paginatedItems = lodash.drop(items, offset).slice(0, per_page);
+	return paginatedItems;
 }
 
 module.exports = app;
