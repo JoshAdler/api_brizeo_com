@@ -2348,6 +2348,10 @@ app.put('/brizeo/events-by-users-matches/:userId/:sort',function(req,res){
 	if (req.params.sort == "popular") {
 		sortstr = "attendingsCount";
 	}
+
+	if(req.params.sort=="earliest"){
+		sortstr="startDate";
+	}
 	var includeThisUsers=[];
 	var getFBIdsFromUserIds=[];
 	var userInvolvingEvents=[];
@@ -2492,7 +2496,7 @@ app.put('/brizeo/events-by-users-matches/:userId/:sort',function(req,res){
 												if(finalCounter == userInvolvingEvents.length){
 													console.log("before sending");
 											//adding filter on date.
-													res.json(lodash.sortBy(userInvolvingEvents,"startDate"));
+													res.json(userInvolvingEvents);
 												  }
 											});
 										});
