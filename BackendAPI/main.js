@@ -469,6 +469,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 			if (req.files != undefined && Object.keys(req.files).indexOf("uploadFile") != -1 && req.files['uploadFile'] != undefined) {
 				console.log("main");
 				upFiles = req.files['uploadFile'];
+				console.log("=========Parth===========================upFILES=========",upFiles);
 			} else {
 				if (req.params.type == "main") {
 					console.log("step22");
@@ -526,7 +527,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 								if (req.params.type == "main") {
 									userinfo.mainProfileImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
 									thumbnail.ensureThumbnail(upFile.filename + "." + exten, 1000, null, function (err, filename) {
-										console.log("----err----", err);
+								 		console.log("----err----", err);
 										if (!err) {
 											console.log(filename);
 											bucket.upload("./thumbnails/" + filename, function (err, file) {
