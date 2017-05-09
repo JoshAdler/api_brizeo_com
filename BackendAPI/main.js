@@ -1052,8 +1052,8 @@ console.log("==============upFIles=====================",upFiles);
 		if (fs.statSync(__dirname + "/bin/" + upFile.path).isFile()) {
 			var exten = getFileExtension(upFile.originalname);
 			console.log("step3");
-			var newname = __dirname + "/" + upFile.path + "." + exten;
-			fs.renameSync(__dirname + "/" + upFile.path, newname);
+			var newname = __dirname + "/bin/" + upFile.path + "." + exten;
+			fs.renameSync(__dirname + "/bin/" + upFile.path, newname);
 			console.log("step4");
 			bucket.upload(newname, function (err, file) {
 				console.log("----------file-------", file.name);
