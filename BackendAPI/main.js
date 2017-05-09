@@ -5,7 +5,7 @@ var lodash = require('lodash');
 async = require('async');
 var nodemailer = require('nodemailer');
 var multer = require('multer');
-var upload = multer({ dest: './uploads/' });
+var upload = multer({ dest: 'uploads/' });
 var fs = require('fs');
 var download = require('download-file');
 var randomstring = require("randomstring");
@@ -1049,7 +1049,7 @@ console.log("===============req.files['thumbnailImage']",req.files['thumbnailIma
 console.log("==============upFIles=====================",upFiles);
 	async.forEach(upFiles, function (upFile, callback) {
 		console.log(upFile);
-		if (fs.statSync(__dirname + "/" + upFile.path).isFile()) {
+		if (fs.statSync(__dirname + "/bin/" + upFile.path).isFile()) {
 			var exten = getFileExtension(upFile.originalname);
 			console.log("step3");
 			var newname = __dirname + "/" + upFile.path + "." + exten;
