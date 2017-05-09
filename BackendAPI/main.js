@@ -60,7 +60,7 @@ var gcs = require('@google-cloud/storage')({
 
 var bucket = gcs.bucket('brizeo-development-bf561.appspot.com');
 
-
+console.log("========================BUCKET================================="+bucket);
 
 var smtpTransport = nodemailer.createTransport({
 	service: "Gmail",
