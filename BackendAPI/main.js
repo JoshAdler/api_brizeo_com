@@ -21,7 +21,7 @@ var Wreck = require('wreck');
 
 FB.setApiVersion("v2.8");
 
-var serviceAccount = require("./dev_configs/brizeo-development-bf561-firebase-adminsdk-2bzrp-5ccecab264.json");
+var serviceAccount = require(__dirname+"/dev_configs/brizeo-development-bf561-firebase-adminsdk-2bzrp-5ccecab264.json");
 //var serviceAccount = require("./fir-test1-7cb44-firebase-adminsdk-4mixq-144aafe9a8.json");
 var app = express();
 
