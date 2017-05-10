@@ -55,7 +55,7 @@ firebase.initializeApp({
 
 var gcs = require('@google-cloud/storage')({
 	projectId: "brizeo-development-bf561",
-	keyFilename: './dev_configs/brizeo-development-bf561-firebase-adminsdk-2bzrp-5ccecab264.json',
+	keyFilename: __dirname+'/dev_configs/brizeo-development-bf561-firebase-adminsdk-2bzrp-5ccecab264.json',
 });
 
 var bucket = gcs.bucket('brizeo-development-bf561.appspot.com');
