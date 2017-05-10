@@ -1058,11 +1058,11 @@ console.log("==============upFIles=====================",upFiles);
 			//fs.renameSync(__dirname + "/" + upFile.path, newname);
 			console.log("step4");
 			bucket.upload(newname, function (err, file) {
-				console.log("----------file-------", file.name);
 				if (err) {
 					console.log("bucket upload error", err);
 					callback("upload error");
 				} else {
+					console.log("----------file-------", file.name);
 					console.log("bucket upload success");
 					console.log("step5");
 
