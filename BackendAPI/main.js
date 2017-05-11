@@ -345,15 +345,17 @@ app.post('/users', function (req, res) {
 		filename = randomstring.generate(32) + "." + exten
 
 		var options = {
-			directory: "./uploads/",
+			directory: __dirname+"/uploads/",
 			filename: filename
 		}
 		var newname = __dirname + "/uploads/" + filename;
 		console.log(newname);
+		console.log("============downURL====================",downUrl);
 		download(downUrl, options, function (err) {
 			if (err)
 				callback("download error")
 			else {
+				console.log("========in else ================");
 				bucket.upload(newname, function (err, file) {
 					if (err) {
 						console.log("bucket upload error", err);
