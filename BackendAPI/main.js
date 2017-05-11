@@ -1384,6 +1384,8 @@ app.delete('/brizeo/moments/:userid/:momentid', function (req, res) {
 							//eventsRef.ref.remove();
 						}
 						res.status(200).end();
+					}else{
+						res.status(200).end();
 					}
 				})
 			/*logic for removing notifications*/
@@ -2153,6 +2155,11 @@ app.put('/brizeo/allevents/:sort', function (req, res) {
 	console.log("----------------API------34 get all Events------------");
 	var searchedevents = [];
 	var sortstr = "distance";
+	console.log("==============================================34=======================================");
+	console.log("req.params.sort",req.params.sort);
+	console.log("req.body.lat",req.body.lat);
+	console.log("req.body.lon",req.body.lon);
+	console.log("==============================================34=========================================");
 	if (req.params.sort == "popular") {
 		sortstr = "attendingsCount";
 	}
