@@ -2163,10 +2163,14 @@ app.put('/brizeo/allevents/:sort', function (req, res) {
 	if (req.params.sort == "popular") {
 		sortstr = "attendingsCount";
 	}
+	if(req.params.sort="earliest"){
+		sortstr="startDate";
+	}
 	eventsRef.once("value", function (snapshot) {
 		for (key in snapshot.val()) {
 			event = snapshot.val()[key];
 			var distance = calculateDistance(event.latitude, event.longitude, req.body.lat, req.body.lon);
+		//	console.log("distance",distance+"evnnnnnnnnnnnnnet",event.latitude,event.longitude);
 			if (distance <= 50) {
 				event.distance = distance;
 				searchedevents.push(event);
