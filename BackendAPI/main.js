@@ -5,7 +5,7 @@ var lodash = require('lodash');
 async = require('async');
 var nodemailer = require('nodemailer');
 var multer = require('multer');
-var upload = multer({ dest: 'uploads/' });
+var upload = multer({ dest: __dirname+'/uploads/' });
 var fs = require('fs');
 var download = require('download-file');
 var randomstring = require("randomstring");
@@ -21,7 +21,7 @@ var Wreck = require('wreck');
 
 FB.setApiVersion("v2.8");
 
-var serviceAccount = require("./brizeo-7571c-firebase-adminsdk.json");
+var serviceAccount = require(__dirname+"/brizeo-7571c-firebase-adminsdk.json");
 //var serviceAccount = require("./fir-test1-7cb44-firebase-adminsdk-4mixq-144aafe9a8.json");
 var app = express();
 
@@ -58,7 +58,7 @@ firebase.initializeApp({
 
 var gcs = require('@google-cloud/storage')({
 	projectId: "brizeo-7571c",
-	keyFilename: './brizeo-7571c-firebase-adminsdk.json',
+	keyFilename: __dirname+'/brizeo-7571c-firebase-adminsdk.json',
 });
 
 var bucket = gcs.bucket('brizeo-7571c.appspot.com');
@@ -83,8 +83,7 @@ var mailOptions = {
 
 
 
-var thumbnail = new Thumbnail('./uploads', './thumbnails');
-
+var thumbnail = new Thumbnail(__dirname+'/uploads', __dirname+'/thumbnails');
 
 
 
@@ -201,13 +200,19 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 		if (!snapshot.exists()) return;
 		var sendtext = "";
 		var soundType="";
+/*First name Only logic*/
+		var displayName=snapshot.val().displayName;
+		if(displayName.split(" ").length>1){
+			displayName=displayName.split(" ")[0];
+		}
+/*First name Only logic endsss.*/		
 		if (type == "newmatch") {
 			newnotification.newmatchid = id;
-			sendtext = snapshot.val().displayName + " matched you.";
+			sendtext = displayName + " matched you.";
 			soundType="sound_matches.wav";
 		} else if (type == "momentslike") {
 			newnotification.momentsid = id;
-			sendtext = snapshot.val().displayName + " liked your moment."
+			sendtext = displayName + " liked your moment."
 			soundType="sound_likes.wav";
 		}
 
@@ -290,13 +295,13 @@ app.get('/test', function (req, res) {
 			});
 })
 
-
+/*
 app.use('/brizeo/',function(req,res,next){
 	console.log("common Auth Function called");
 	authMiddleware(req,res,next);
 });
 
-
+*/
 
 function getFileExtension(fileurl) {
 	var arr = fileurl.split("?");
@@ -342,7 +347,7 @@ app.post('/users', function (req, res) {
 		filename = randomstring.generate(32) + "." + exten
 
 		var options = {
-			directory: "./uploads/",
+			directory: __dirname+"/uploads/",
 			filename: filename
 		}
 		var newname = __dirname + "/uploads/" + filename;
@@ -505,11 +510,11 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 
 			async.forEach(upFiles, function (upFile, callback) {
 				console.log(upFile);
-				if (fs.statSync(__dirname + "/" + upFile.path).isFile()) {
+				if (fs.statSync(upFile.path).isFile()) {
 					var exten = getFileExtension(upFile.originalname);
 					console.log("step3");
-					var newname = __dirname + "/" + upFile.path + "." + exten;
-					fs.renameSync(__dirname + "/" + upFile.path, newname);
+					var newname = upFile.path + "." + exten;
+					fs.renameSync(upFile.path, newname);
 					console.log("step4");
 					bucket.upload(newname, function (err, file) {
 						if (err) {
@@ -526,7 +531,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 										console.log("----err----", err);
 										if (!err) {
 											console.log(filename);
-											bucket.upload("./thumbnails/" + filename, function (err, file) {
+											bucket.upload(__dirname+"/thumbnails/" + filename, function (err, file) {
 												if (err) {
 													console.log("thumbnail bucket upload error", err);
 													callback("upload error");
@@ -556,7 +561,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 													console.log("----err----", err);
 													if (!err) {
 														console.log(filename);
-														bucket.upload("./thumbnails/" + filename, function (err, file) {
+														bucket.upload(__dirname+"/thumbnails/" + filename, function (err, file) {
 															if (err) {
 																console.log("thumbnail bucket upload error", err);
 																callback("upload error");
@@ -593,7 +598,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 														console.log("----err----", err);
 														if (!err) {
 															console.log(filename);
-															bucket.upload("./thumbnails/" + filename, function (err, file) {
+															bucket.upload(__dirname+"/thumbnails/" + filename, function (err, file) {
 																if (err) {
 																	console.log("thumbnail bucket upload error", err);
 																	callback("upload error");
@@ -629,7 +634,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 															console.log("----err----", err);
 															if (!err) {
 																console.log(filename);
-																bucket.upload("./thumbnails/" + filename, function (err, file) {
+																bucket.upload(__dirname+"/thumbnails/" + filename, function (err, file) {
 																	if (err) {
 																		console.log("thumbnail bucket upload error", err);
 																		callback("upload error");
@@ -868,6 +873,100 @@ app.get('/brizeo/moments/:sort/:filter', function (req, res) {
 	}
 });
 
+//8.1 
+//8) GetAllMoments (we can combine this and the previous method in one)
+app.get('/brizeo/allmoments/:sort/:filter/:pageNo', function (req, res) {
+	console.log("----------------API------08.01------------");
+	console.log(req.headers['x-access-token']);
+	var sortstr = "updatedAt";
+	var pageNo=parseInt(req.params.pageNo);
+	if (req.params.sort == "popular") {
+		sortstr = "numberOfLikes";
+	}
+	var filterstr = req.params.filter;
+	var moments = [];
+
+	if (filterstr != "all") {
+		momentImagesRef.orderByChild("passionId").equalTo(filterstr).once("value", function (snapshot) {
+			if (snapshot.exists())
+				moments = lodash.sortBy(snapshot.val(), sortstr).reverse();
+			var filteredArr=[];
+			async.forEach(moments, function (moment, callback) {
+				var isViewableByAll=moment.viewableByAll;
+				if(moment.hasOwnProperty("viewableByAll")==false){
+					isViewableByAll=true;
+				}
+				if (moment.hasOwnProperty("userId")) {
+					usersRef.child(moment.userId).once("value", function (snapshot) {
+						if (snapshot.exists()){
+							moment.user = snapshot.val();
+						}
+						callback();
+					});
+				}else{
+					callback();
+				}
+				if(isViewableByAll==true || isViewableByAll=="true"){
+					filteredArr.push(moment);
+				}
+
+			}, function (err) {
+				console.log("called after filter, filterstring not equals all");
+				if (req.params.sort == "popular"){
+					console.log((getUpSuperUserMoment(filteredArr)).length);
+					res.send(getUpSuperUserMoment(filteredArr));
+				}
+				else{
+					console.log(filteredArr.length);
+					res.send(filteredArr);
+				}
+			});
+		});
+	} else {
+		console.log("all filters===========================================",sortstr,pageNo);
+		momentImagesRef.orderByChild(sortstr).once("value", function (snapshot) {
+			if (snapshot.exists()) {
+				snapshot.forEach(function (moment) {
+					var forOldImages=false;
+					if(moment.val().hasOwnProperty("viewableByAll")==false){
+						forOldImages=true;
+					}
+
+					if(moment.val()["viewableByAll"]=="true" || forOldImages==true || moment.val()["viewableByAll"]==true){
+						moments.push(moment.val());
+					}
+				});
+				console.log("-========moments length"+moments.length);
+				moments = moments.reverse();
+
+				async.forEach(moments, function (moment, callback) {
+					if (moment.hasOwnProperty("userId")) {
+						usersRef.child(moment.userId).once("value", function (snapshot) {
+							if (snapshot.exists()) moment.user = snapshot.val();
+							callback();
+						});
+					} else
+						callback();
+				}, function (err) {
+					console.log(moments.length)
+					if (req.params.sort == "popular"){
+						moments=getPaginatedItems(moments,pageNo);
+						res.send(getUpSuperUserMoment(moments));
+					}
+					else{
+						moments=getPaginatedItems(moments,pageNo);
+						res.send(moments);
+					}
+				});
+			}else{
+				console.log("no resultds");
+				res.send(moments);
+			}
+		});
+	}
+});
+
+
 //9) GetMatchedMomentsByUserId
 app.get('/brizeo/matchedmoments/:userid/:sort/:filter', function (req, res) {
 	console.log("----------------API------09------------");
@@ -1035,11 +1134,11 @@ app.put('/brizeo/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, {
 
 	async.forEach(upFiles, function (upFile, callback) {
 		console.log(upFile);
-		if (fs.statSync(__dirname + "/" + upFile.path).isFile()) {
+		if (fs.statSync(upFile.path).isFile()) {
 			var exten = getFileExtension(upFile.originalname);
 			console.log("step3");
-			var newname = __dirname + "/" + upFile.path + "." + exten;
-			fs.renameSync(__dirname + "/" + upFile.path, newname);
+			var newname = upFile.path + "." + exten;
+			fs.renameSync(upFile.path, newname);
 			console.log("step4");
 			bucket.upload(newname, function (err, file) {
 				console.log("----------file-------", file.name);
@@ -1059,7 +1158,7 @@ app.put('/brizeo/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, {
 									console.log("----err----", err);
 									if (!err) {
 										console.log(filename);
-										bucket.upload("./thumbnails/" + filename, function (err, file) {
+										bucket.upload(__dirname+"/thumbnails/" + filename, function (err, file) {
 											if (err) {
 												console.log("thumbnail bucket upload error", err);
 												callback("upload error");
@@ -1169,23 +1268,32 @@ app.post('/brizeo/reportmoment/:momentid/:userid', function (req, res) {
 	usersRef.child(req.params.userid).once("value", function (snapshot) {
 		console.log(snapshot.val());
 		if (snapshot.exists()) {
-			messageText = "User mail : " + snapshot.val().objectId + ", Name : " + snapshot.val().displayName;
+			messageText = "User Id : " + snapshot.val().objectId + ", Name : " + snapshot.val().displayName+"["+snapshot.val().email+"]";
 			momentImagesRef.child(req.params.momentid).once("value", function (snapshot) {
 				console.log(snapshot.val());
 				if (snapshot.exists()) {
-					messageText += " reported " + "image : " + snapshot.val().momentsUploadImage;
+					messageText += " reported " + "image '"+snapshot.val().momentDescription +"' [" + snapshot.val().momentsUploadImage + "] with id "+snapshot.val().objectId + " At time:- "+new Date();
 					mailOptions.text = messageText;
-					console.log(messageText);
-					smtpTransport.sendMail(mailOptions, function (error, response) {
-						if (error) {
-							console.log(error);
-							res.status(500).end();
-						} else {
-							console.log("Message sent : " + response.response);
-							res.status(200).end();
+
+					usersRef.child(snapshot.val().userId).once('value',function(sp){
+						if(sp.exists()){
+							messageText+=" uploaded by: " +sp.val().displayName +"["+sp.val().email+"]";
+							console.log(messageText);
+							mailOptions.text=messageText;
+
+							smtpTransport.sendMail(mailOptions, function (error, response) {
+								if (error) {
+									console.log(error);
+									res.status(500).end();
+								} else {
+									console.log("Message sent : " + response.response);
+									res.status(200).end();
+								}
+								smtpTransport.close();
+							});
 						}
-						smtpTransport.close();
-					});
+					})
+
 				} else
 					res.status(404).end();
 			});
@@ -1350,10 +1458,24 @@ app.delete('/brizeo/moments/:userid/:momentid', function (req, res) {
 	momentImagesRef.child(req.params.momentid).remove(function (error) {
 		if (error)
 			res.status(404).end();
-		else
-			res.status(200).end();
+		else{
+			/*logic for removing norifications*/
+				notificationRef.orderByChild("momentsid").equalTo(req.params.momentid).once('value', function (snapshot) {
+					if(snapshot.exists()){
+						for(key in snapshot.val()){
+							notificationRef.child(key).remove();
+							//eventsRef.ref.remove();
+						}
+						res.status(200).end();
+					}else{
+						res.status(200).end();
+					}
+				})
+			/*logic for removing notifications*/
+		}
 	});
 });
+
 
 //19) ReportUser
 app.post('/brizeo/reportuser/:userid1/:userid2', function (req, res) {
@@ -1696,9 +1818,14 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 				/*Including users who are already matched with user*/
 					matchRef.orderByChild("userA").equalTo(req.params.userid).once('value', function (snapshot) {
 						if(snapshot.exists){
-							for(key in snapshot.val()){
-								doNotIncludeThisUsers.push(snapshot.val()[key].userB);
-							}
+							async.series([function(callback){
+								console.log("fn 1");
+										for(key in snapshot.val()){
+											console.log("status",snapshot.val()[key].status);
+											doNotIncludeThisUsers.push(snapshot.val()[key].userB);
+				   						 }
+				   					  callback(null,doNotIncludeThisUsers);
+							}]);
 						}
 					});
 				/*ends*/
@@ -2083,9 +2210,17 @@ app.put('/brizeo/notifications/:notificationid', function (req, res) {
 app.put('/brizeo/allevents/:sort', function (req, res) {
 	console.log("----------------API------34 get all Events------------");
 	var searchedevents = [];
+	console.log("==============================================34=======================================");
+	console.log("req.params.sort",req.params.sort);
+	console.log("req.body.lat",req.body.lat);
+	console.log("req.body.lon",req.body.lon);
+	console.log("==============================================34=========================================");
 	var sortstr = "distance";
 	if (req.params.sort == "popular") {
 		sortstr = "attendingsCount";
+	}
+	if(req.params.sort="earliest"){
+		sortstr="startDate";
 	}
 	eventsRef.once("value", function (snapshot) {
 		for (key in snapshot.val()) {
@@ -2319,6 +2454,9 @@ app.put('/brizeo/events-by-users-matches/:userId/:sort',function(req,res){
 	if (req.params.sort == "popular") {
 		sortstr = "attendingsCount";
 	}
+	if(req.params.sort=="earliest"){
+		sortstr="startDate";
+	}
 	var includeThisUsers=[];
 	var getFBIdsFromUserIds=[];
 	var userInvolvingEvents=[];
@@ -2519,6 +2657,14 @@ function intersection_destructive(a, b)
     }
   }
   return result;
+}
+
+function getPaginatedItems(items, page) {
+	var page = page || 1,
+	    per_page = 35,
+	    offset = (page - 1) * per_page,
+	    paginatedItems = lodash.drop(items, offset).slice(0, per_page);
+	return paginatedItems;
 }
 
 module.exports = app;
