@@ -510,7 +510,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 			}
 
 			async.forEach(upFiles, function (upFile, callback) {
-				console.log(upFile);
+				console.log(upFile); 
 				if (fs.statSync(upFile.path).isFile()) {
 					var exten = getFileExtension(upFile.originalname);
 					console.log("step3");
@@ -1708,7 +1708,6 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 	return d;
 }
 
-//23) GetUsersForMatch
 app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 	console.log("----------------API------23------------");
 	usersRef.child(req.params.userid).once("value", function (snapshot) {
@@ -1732,8 +1731,6 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 				minage = pref.lowerAgeLimit;
 				searchLocation = pref.searchLocation;
 				var doNotIncludeThisUsers=[];
-				var usersIMatchedWith=[];
-				var usersWhoMatchedWithMe=[];
 				doNotIncludeThisUsers.push(req.params.userid);
 				/*Including users who are already matched with user*/
 					matchRef.orderByChild("userA").equalTo(req.params.userid).once('value', function (snapshot) {
@@ -1741,36 +1738,11 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 							async.series([function(callback){
 								console.log("fn 1");
 										for(key in snapshot.val()){
-											usersIMatchedWith.push(snapshot.val()[key].userB);
+											console.log("status",snapshot.val()[key].status);
+											doNotIncludeThisUsers.push(snapshot.val()[key].userB);
 				   						 }
 				   					  callback(null,doNotIncludeThisUsers);
-							},function(icb2){
-										console.log("fn 2");
-										 matchRef.orderByChild("userB").equalTo(req.params.userid).once("value",function(snapshot){
-										 	if(snapshot.exists()){
-										 		var cntr=0;
-										 		for(key in snapshot.val()){
-										 			cntr++;
-										 			console.log("snapshot.val()[key].userA",snapshot.val()[key].userA);
-													usersWhoMatchedWithMe.push(snapshot.val()[key].userA);
-													if(cntr==lodash.size(snapshot.val())){
-														icb2();
-													}
-									    		}
-										 	}else{
-										 		res.json(arymoments);
-										 	}
-										 });	
-									},function(icb3){
-										console.log("u i m with",usersIMatchedWith);
-										console.log("u w m with me",usersWhoMatchedWithMe);
-										doNotIncludeThisUsers=intersection_destructive(usersIMatchedWith,usersWhoMatchedWithMe);
-										if(doNotIncludeThisUsers.length==0){
-											res.json(arymoments);
-										}
-										console.log("myMatches",doNotIncludeThisUsers);
-										icb3();
-									}]);
+							}]);
 						}
 					});
 				/*ends*/
@@ -1791,7 +1763,6 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 								var overAllTest=searchTest && minAgeTest && maxAgeTest && genderTest;
 								if(overAllTest){
 									console.log("usr founddddddddddddddddddd");
-									console.log("doNotIncludeThisUsers",doNotIncludeThisUsers);
 									if(doNotIncludeThisUsers.indexOf(usr.objectId)<0){
 										aryuser.push(usr);
 									}
