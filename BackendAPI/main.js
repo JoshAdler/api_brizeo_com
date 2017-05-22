@@ -16,7 +16,13 @@ var gm = require("gm");
 var jwt = require('jsonwebtoken');
 var Wreck = require('wreck');
 
-
+// S3 Bucket - AB :: START
+// multerS3 = require("multer-s3")
+var AWS = require("aws-sdk");
+var fileType = require("file-type");
+AWS.config.loadFromPath("./dev_configs/s3-cred.json");
+var s3 = new AWS.S3();
+// S3 Bucket - AB :: END
 
 
 FB.setApiVersion("v2.8");
@@ -1054,53 +1060,51 @@ console.log("==============upFIles=====================",upFiles);
 		if (fs.statSync(upFile.path).isFile()) {
 			var exten = getFileExtension(upFile.originalname);
 			console.log("step3");
-			var newname =  upFile.path + "." + exten;
+			var newname =  upFile.path + "." + exten,
+				fileContentType = upFile.mimetype;;
 			fs.renameSync(upFile.path, newname);
 			//var newname = __dirname + "/" + upFile.path + "." + exten;
 			//fs.renameSync(__dirname + "/" + upFile.path, newname);
 			console.log("step4");
-			bucket.upload(newname, function (err, file) {
+			// bucket.upload(newname, function (err, file) {
+			s3Upload(upFile.filename + "." + exten, newname, fileContentType, function(data, err) {
 				if (err) {
 					console.log("bucket upload error", err);
 					callback("upload error");
 				} else {
-					console.log("----------file-------", file.name);
+					console.log("----------file-------", data.key);
 					console.log("bucket upload success");
 					console.log("step5");
-
-					file.makePublic().then(function (data) {
-						if (upFile.fieldname == "uploadFile") {
-							newmoment.momentsUploadImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
-							if (req.files['thumbnailImage'] == undefined) {
-								console.log("step51")
-								thumbnail.ensureThumbnail(upFile.filename + "." + exten, 1000, null, function (err, filename) {
-									console.log("----err----", err);
-									if (!err) {
-										console.log(filename);
-										bucket.upload(__dirname+"/thumbnails/" + filename, function (err, file) {
-											if (err) {
-												console.log("thumbnail bucket upload error", err);
-												callback("upload error");
-											} else {
-												console.log("thumbnail bucket upload success");
-												console.log("step52");
-												file.makePublic().then(function (data) {
-													newmoment.thumbnailImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
-													callback();
-												});
-											}
-										});
-
-									} else
-										callback();
-								});
-							} else
-								callback();
-						} else {
-							newmoment.thumbnailImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
-							callback();
-						}
-					});
+					if (upFile.fieldname == "uploadFile") {
+						// newmoment.momentsUploadImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
+						newmoment.momentsUploadImage = data.Location;
+						if (req.files['thumbnailImage'] == undefined) {
+							console.log("step51")
+							thumbnail.ensureThumbnail(upFile.filename + "." + exten, 1000, null, function(err, filename) {
+								console.log("----err----", err);
+								if (!err) {
+									console.log(filename);
+									// bucket.upload("./thumbnails/" + filename, function (err, file) {
+									s3Upload(filename, "./thumbnails/" + filename, fileContentType, function(data, err) {
+										if (err) {
+											console.log("thumbnail bucket upload error", err);
+											callback("upload error");
+										} else {
+											console.log("thumbnail bucket upload success");
+											console.log("step52");
+											// newmoment.thumbnailImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
+											newmoment.thumbnailImage = data.Location;
+											callback();
+										}
+									});
+								} else callback();
+							});
+						} else callback();
+					} else {
+						// newmoment.thumbnailImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
+						newmoment.thumbnailImage = data.Location;
+						callback();
+					}
 				}
 			});
 		} else {
@@ -2586,6 +2590,45 @@ function getPaginatedItems(items, page) {
 	    offset = (page - 1) * per_page,
 	    paginatedItems = lodash.drop(items, offset).slice(0, per_page);
 	return paginatedItems;
+}
+
+// AB - Upload to amazon s3 server - START
+function s3Upload(fileName, pathToFile, mime, callback) {
+	console.log('s3UploadFunction');
+	var albumPhotosKey = encodeURIComponent("uploads") + '/',
+		photoKey = albumPhotosKey + fileName,
+		fsReadStream = fs.createReadStream(pathToFile),
+		S3 = new AWS.S3({
+			params: {
+				Bucket: "brizeodevelopment"
+			}
+		}),
+		uploadConfigObj = {
+			Key: photoKey,
+			Body: fsReadStream,
+			ACL: 'public-read'
+		};
+	
+	if(mime !== undefined && mime.length) 
+		uploadConfigObj.ContentType = mime;
+
+	console.log("s3UploadFunc - Step 1");
+	S3.upload(uploadConfigObj, function(err, data) {
+		console.log("s3UploadFunc - Step 2 - s3upload callback");
+		console.log(err, data);
+		if (err) {
+			console.log("s3UploadFunc - Step 2 - if");
+			console.log("func::s3Upload:::Upload Error", err, "\nErrMsg:", err.msg);
+			callback(data, err);
+			return;
+		} else {
+			console.log("s3UploadFunc - Step 2 - else");
+			console.log("success", {
+				"data": data
+			});
+			callback(data);
+		}
+	});
 }
 
 module.exports = app;
