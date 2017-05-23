@@ -1085,7 +1085,7 @@ console.log("==============upFIles=====================",upFiles);
 								if (!err) {
 									console.log(filename);
 									// bucket.upload("./thumbnails/" + filename, function (err, file) {
-									s3Upload(filename, "./thumbnails/" + filename, fileContentType, function(data, err) {
+									s3Upload(filename, __dirname +"/thumbnails/" + filename, fileContentType, function(data, err) {
 										if (err) {
 											console.log("thumbnail bucket upload error", err);
 											callback("upload error");
