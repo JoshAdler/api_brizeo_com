@@ -20,7 +20,7 @@ var Wreck = require('wreck');
 // multerS3 = require("multer-s3")
 var AWS = require("aws-sdk");
 var fileType = require("file-type");
-AWS.config.loadFromPath("./dev_configs/s3-cred.json");
+AWS.config.loadFromPath(__dirname + "/dev_configs/s3-cred.json");
 var s3 = new AWS.S3();
 // S3 Bucket - AB :: END
 
