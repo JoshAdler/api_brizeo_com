@@ -1024,14 +1024,13 @@ console.log("==============upFIles=====================",upFiles);
 		if (fs.statSync(upFile.path).isFile()) {
 			var exten = getFileExtension(upFile.originalname);
 			console.log("step3");
-			var newname =  upFile.path + "." + exten,
-				fileContentType = upFile.mimetype;;
+			var newname =  upFile.path + "." + exten;
 			fs.renameSync(upFile.path, newname);
 			//var newname = __dirname + "/" + upFile.path + "." + exten;
 			//fs.renameSync(__dirname + "/" + upFile.path, newname);
 			console.log("step4");
 			// bucket.upload(newname, function (err, file) {
-			s3Upload(upFile.filename + "." + exten, newname, fileContentType, function(data, err) {
+			s3Upload(upFile.filename + "." + exten, newname, function(data, err) {
 				if (err) {
 					console.log("bucket upload error", err);
 					callback("upload error");
@@ -1049,7 +1048,7 @@ console.log("==============upFIles=====================",upFiles);
 								if (!err) {
 									console.log(filename);
 									// bucket.upload("./thumbnails/" + filename, function (err, file) {
-									s3Upload(filename, __dirname +"/thumbnails/" + filename, fileContentType, function(data, err) {
+									s3Upload(filename, __dirname +"/thumbnails/" + filename, function(data, err) {
 										if (err) {
 											console.log("thumbnail bucket upload error", err);
 											callback("upload error");
