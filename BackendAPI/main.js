@@ -315,7 +315,7 @@ function getFileExtension(fileurl) {
 }
 
 //1) SignUp
-app.post('/users', function (req, res) {
+app.post('/users', function(req, res) {
 	console.log("----------------API------01------------");
 	// var newuser = {
 	// 	age: 40,
@@ -328,76 +328,61 @@ app.post('/users', function (req, res) {
 	console.log("----------step1----------", newuser);
 	//	var newuser = JSON.parse(JSON.stringify(req.body.newuser));
 	console.log(newuser);
-
 	var downUrls = [];
 	if (newuser['mainProfileImage'] != undefined) {
 		console.log("main");
 		downUrls.push(newuser.mainProfileImage);
 	}
-
 	if (newuser['otherProfileImages'] != undefined) {
 		console.log("other");
 		downUrls = downUrls.concat(newuser.otherProfileImages);
 	}
-
 	console.log(downUrls);
 	newuser.otherProfileImages = [];
 	newuser.thumbnailImages = [];
 	console.log(downUrls);
-	async.forEach(downUrls, function (downUrl, callback) {
+	async.forEach(downUrls, function(downUrl, callback) {
 		console.log("step1---", downUrl);
 		var exten = getFileExtension(downUrl);
-
 		filename = randomstring.generate(32) + "." + exten
-
 		var options = {
 			directory: __dirname+"/uploads/",
 			filename: filename
 		}
 		var newname = __dirname + "/uploads/" + filename;
 		console.log(newname);
-		console.log("============downURL====================",downUrl);
-		download(downUrl, options, function (err) {
-			if (err)
-				callback("download error")
+		download(downUrl, options, function(err) {
+			if (err) callback("download error")
 			else {
-				console.log("========in else ================");
-				bucket.upload(newname, function (err, file) {
+				// bucket.upload(newname, function(err, file) {
+				s3Upload(filename, newname, function(data, err) {
 					if (err) {
 						console.log("bucket upload error", err);
 						callback();
-
 					} else {
 						console.log("bucket upload success");
 						console.log("step5");
-
-						file.makePublic().then(function (data) {
-							if (newuser['mainProfileImage'] != undefined && newuser['mainProfileImage'] == downUrl)
-								newuser.mainProfileImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
-							else {
-								newuser.otherProfileImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
-								newuser.thumbnailImages.push("");
-							}
-							callback();
-						}).catch(function (err) {
-							console.log(err);
-							callback('public error');
-						});
+						// if (newuser['mainProfileImage'] != undefined && newuser['mainProfileImage'] == downUrl) newuser.mainProfileImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
+						if (newuser['mainProfileImage'] != undefined && newuser['mainProfileImage'] == downUrl) newuser.mainProfileImage = data.Location;
+						else {
+							newuser.otherProfileImages.push(data.Location);
+							newuser.thumbnailImages.push("");
+						}
+						callback();
 					}
 				});
 			}
 		})
-	}, function (err) {
+	}, function(err) {
 		console.log("---err----", err);
 		//		usersRef.push(newuser);
 		console.log(newuser);
 		newuserref = usersRef.push();
 		newuser.objectId = newuserref.key;
-		newuser.jwt=makeJWT(newuser.objectId);
+		newuser.jwt = makeJWT(newuser.objectId);
 		console.log("-----------key-----------", newuserref.key);
-		usersRef.child(newuserref.key).set(newuser, function (error) {
-			if (error)
-				res.sendStatus(500);
+		usersRef.child(newuserref.key).set(newuser, function(error) {
+			if (error) res.sendStatus(500);
 			else {
 				superUserMatch1 = {
 					status: 1,
@@ -409,14 +394,12 @@ app.post('/users', function (req, res) {
 					userA: newuserref.key,
 					userB: superUserId
 				}
-
 				matchRef.push(superUserMatch1);
 				matchRef.push(superUserMatch2);
-				preferencesRef.child(newuserref.key).set(newpref, function (error) {
+				preferencesRef.child(newuserref.key).set(newpref, function(error) {
 					res.send(newuser);
 				});
 			}
-
 		});
 		//newref.set(newuser);
 		// newuser = {};
@@ -463,12 +446,12 @@ function checkThumbnailBugs(userinfo) {
 //3) UploadFilesForUser (It may be images or videos)
 app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', maxCount: 1 }, { name: 'thumbnailImage', maxCount: 1 }]), function (req, res) {
 	console.log("----------------API------03------------");
-	console.log("==========================================================#3===image start================"+new Date());
+	console.log("==========================================================#3===image start================" + new Date());
 	var userinfo = {};
 	console.log(req.body);
 	console.log(req.params);
 	console.log("step1");
-	usersRef.child(req.params.userid).once("value", function (snapshot) {
+	usersRef.child(req.params.userid).once("value", function(snapshot) {
 		console.log("step2");
 		if (snapshot.exists()) {
 			userinfo = snapshot.val()
@@ -477,7 +460,6 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 			if (req.files != undefined && Object.keys(req.files).indexOf("uploadFile") != -1 && req.files['uploadFile'] != undefined) {
 				console.log("main");
 				upFiles = req.files['uploadFile'];
-				console.log("=========Parth===========================upFILES=========",upFiles);
 			} else {
 				if (req.params.type == "main") {
 					console.log("step22");
@@ -490,70 +472,63 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 						if (indexToDel != -1) {
 							console.log("step24");
 							userinfo.otherProfileImages.splice(indexToDel, 1);
-							if (userinfo.hasOwnProperty("thumbnailImages"))
-								userinfo.thumbnailImages.splice(indexToDel, 1);
-							usersRef.child(req.params.userid).update(userinfo, function (error) {
+							if (userinfo.hasOwnProperty("thumbnailImages")) userinfo.thumbnailImages.splice(indexToDel, 1);
+							usersRef.child(req.params.userid).update(userinfo, function(error) {
 								console.log("step25");
-								if (error)
-									res.sendStatus(500)
-								else{
-									console.log("===================================#3=========================image end================"+new Date());
+								if (error) res.sendStatus(500)
+								else {
+									console.log("===================================#3=========================image end================" + new Date());
 									res.send(userinfo);
 								}
 							})
-						} else
-							res.sendStatus(500);
-					} else
-						res.sendStatus(404);
+						} else res.sendStatus(500);
+					} else res.sendStatus(404);
 				}
 				console.log("step26");
 				return;
 			}
-
 			if (req.files != undefined && Object.keys(req.files).indexOf("thumbnailImage") != -1 && req.files['thumbnailImage'] != undefined) {
 				console.log("other");
 				upFiles = upFiles.concat(req.files['thumbnailImage']);
 			}
-
-			async.forEach(upFiles, function (upFile, callback) {
-				console.log(upFile); 
-				if (fs.statSync(upFile.path).isFile()) {
+			async.forEach(upFiles, function(upFile, callback) {
+				console.log(upFile);
+				if (fs.statSync(__dirname + "/" + upFile.path).isFile()) {
 					var exten = getFileExtension(upFile.originalname);
 					console.log("step3");
-					var newname = upFile.path + "." + exten;
-					fs.renameSync(upFile.path, newname);
+					var newname = __dirname + "/" + upFile.path + "." + exten;
+					fs.renameSync(__dirname + "/" + upFile.path, newname);
 					console.log("step4");
-					bucket.upload(newname, function (err, file) {
+					// bucket.upload(newname, function(err, file) {
+					s3Upload(upFile.path + "." + exten, newname, function(data, err) {
 						if (err) {
 							console.log("bucket upload error", err);
 							callback();
 						} else {
 							console.log("bucket upload success");
 							console.log("step5");
-
-							file.makePublic().then(function (data) {
+							// file.makePublic().then(function(data) {
 								if (req.params.type == "main") {
-									userinfo.mainProfileImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
-									thumbnail.ensureThumbnail(upFile.filename + "." + exten, 1000, null, function (err, filename) {
-								 		console.log("----err----", err);
+									// userinfo.mainProfileImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
+									userinfo.mainProfileImage = data.Location;
+									thumbnail.ensureThumbnail(upFile.filename + "." + exten, 1000, null, function(err, filename) {
+										console.log("----err----", err);
 										if (!err) {
 											console.log(filename);
-											bucket.upload(__dirname+"/thumbnails/" + filename, function (err, file) {
+											// bucket.upload("./thumbnails/" + filename, function(err, file) {
+											s3Upload(filename, __dirname+"/thumbnails/" + filename, function(data, err) {
 												if (err) {
 													console.log("thumbnail bucket upload error", err);
 													callback("upload error");
 												} else {
 													console.log("thumbnail bucket upload success");
 													console.log("step52");
-													file.makePublic().then(function (data) {
-														userinfo.mainthumbnailImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
-														callback();
-													});
+													// userinfo.mainthumbnailImage = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
+													userinfo.mainthumbnailImage = data.Location;
+													callback();
 												}
 											});
-
-										} else
-											callback();
+										} else callback();
 									});
 								} else {
 									console.log("step6");
@@ -562,74 +537,67 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 										userinfo.otherProfileImages = [];
 										userinfo.thumbnailImages = [];
 										if (upFile.fieldname == "uploadFile") {
-											userinfo.otherProfileImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
+											// userinfo.otherProfileImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
+											userinfo.otherProfileImages.push(data.Location);
 											if (req.files['thumbnailImage'] == undefined) {
-												thumbnail.ensureThumbnail(upFile.filename + "." + exten, 400, null, function (err, filename) {
+												thumbnail.ensureThumbnail(upFile.filename + "." + exten, 400, null, function(err, filename) {
 													console.log("----err----", err);
 													if (!err) {
 														console.log(filename);
-														bucket.upload(__dirname+"/thumbnails/" + filename, function (err, file) {
+														// bucket.upload("./thumbnails/" + filename, function(err, file) {
+														s3Upload(filename, __dirname+"/thumbnails/" + filename, function(data, err) {
 															if (err) {
 																console.log("thumbnail bucket upload error", err);
 																callback("upload error");
 															} else {
 																console.log("thumbnail bucket upload success");
 																console.log("step52");
-																file.makePublic().then(function (data) {
-																	userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
-																	callback();
-																});
+																// userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
+																userinfo.thumbnailImages.push(data.Location);
+																callback();
 															}
 														});
-
-													} else
-														callback();
+													} else callback();
 												});
-											} else
-												callback();
-										}
-										else {
-											userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
+											} else callback();
+										} else {
+											// userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
+											userinfo.thumbnailImages.push(data.Location);
 											callback();
 										}
 									} else {
-										if (!userinfo.hasOwnProperty("thumbnailImages"))
-											userinfo.thumbnailImages = [];
-
+										if (!userinfo.hasOwnProperty("thumbnailImages")) userinfo.thumbnailImages = [];
 										if (req.body.oldurl == undefined) {
 											console.log("step8");
 											if (upFile.fieldname == "uploadFile") {
-												userinfo.otherProfileImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
+												// userinfo.otherProfileImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
+												userinfo.otherProfileImages.push(data.Location);
 												if (req.files['thumbnailImage'] == undefined) {
-													thumbnail.ensureThumbnail(upFile.filename + "." + exten, 400, null, function (err, filename) {
+													thumbnail.ensureThumbnail(upFile.filename + "." + exten, 400, null, function(err, filename) {
 														console.log("----err----", err);
 														if (!err) {
 															console.log(filename);
-															bucket.upload(__dirname+"/thumbnails/" + filename, function (err, file) {
+															// bucket.upload("./thumbnails/" + filename, function(err, file) {
+															s3Upload(filename, __dirname+"/thumbnails/" + filename, function(data, err) {
 																if (err) {
 																	console.log("thumbnail bucket upload error", err);
 																	callback("upload error");
 																} else {
 																	console.log("thumbnail bucket upload success");
 																	console.log("step52");
-																	file.makePublic().then(function (data) {
-																		userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
-																		callback();
-																	});
+																	// userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
+																	userinfo.thumbnailImages.push(data.Location);
+																	callback();
 																}
 															});
-
-														} else
-															callback();
+														} else callback();
 													});
-												} else
-													callback();
-											}
-											else {
-												userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
+												} else callback();
+											} else {
+												// userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
+												userinfo.thumbnailImages.push(data.Location);
 												callback();
 											}
-
 										} else {
 											console.log(indexToDel);
 											indexToDel = userinfo.otherProfileImages.indexOf(req.body.oldurl);
@@ -637,52 +605,46 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 												if (upFile.fieldname == "uploadFile") {
 													userinfo.otherProfileImages[indexToDel] = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
 													if (req.files['thumbnailImage'] == undefined) {
-														thumbnail.ensureThumbnail(upFile.filename + "." + exten, 400, null, function (err, filename) {
+														thumbnail.ensureThumbnail(upFile.filename + "." + exten, 400, null, function(err, filename) {
 															console.log("----err----", err);
 															if (!err) {
 																console.log(filename);
-																bucket.upload(__dirname+"/thumbnails/" + filename, function (err, file) {
+																// bucket.upload("./thumbnails/" + filename, function(err, file) {
+																s3Upload(filename, __dirname+"/thumbnails/" + filename, function(data, err) {
 																	if (err) {
 																		console.log("thumbnail bucket upload error", err);
 																		callback("upload error");
 																	} else {
 																		console.log("thumbnail bucket upload success");
 																		console.log("step52");
-																		file.makePublic().then(function (data) {
-																			userinfo.thumbnailImages[indexToDel] = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
-																			callback();
-																		});
+																		// userinfo.thumbnailImages[indexToDel] = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
+																		userinfo.thumbnailImages[indexToDel] = data.Location;
+																		callback();
 																	}
 																});
-
-															} else
-																callback();
+															} else callback();
 														});
-													} else
-														callback();
+													} else callback();
 												} else {
-													userinfo.thumbnailImages[indexToDel] = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
+													// userinfo.thumbnailImages[indexToDel] = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
+													userinfo.thumbnailImages[indexToDel] = data.Location;
 													callback();
 												}
 											}
 										}
 									}
 								}
-							});
+							// });
 						}
 					});
 				};
-			}, function (err) {
-				usersRef.child(req.params.userid).update(userinfo, function (error) {
-					if (error)
-						res.sendStatus(500)
-					else
-						res.send(userinfo);
+			}, function(err) {
+				usersRef.child(req.params.userid).update(userinfo, function(error) {
+					if (error) res.sendStatus(500)
+					else res.send(userinfo);
 				});
 			});
-		}
-		else
-			res.sendStatus(404);
+		} else res.sendStatus(404);
 	});
 });
 
