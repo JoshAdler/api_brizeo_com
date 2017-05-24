@@ -501,7 +501,7 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 					fs.renameSync(upFile.path, newname);
 					console.log("step4");
 					// bucket.upload(newname, function(err, file) {
-					s3Upload(upFile.path + "." + exten, newname, function(data, err) {
+					s3Upload(upFile.filename + "." + exten, newname, function(data, err) {
 						if (err) {
 							console.log("bucket upload error", err);
 							callback();
@@ -558,9 +558,13 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 																callback();
 															}
 														});
-													} else callback();
+													} else {
+														callback();
+													}
 												});
-											} else callback();
+											} else {
+												callback();
+											}
 										} else {
 											// userinfo.thumbnailImages.push("https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name);
 											userinfo.thumbnailImages.push(data.Location);
