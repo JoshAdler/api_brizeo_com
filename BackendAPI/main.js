@@ -494,11 +494,11 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 			}
 			async.forEach(upFiles, function(upFile, callback) {
 				console.log(upFile);
-				if (fs.statSync(__dirname + "/" + upFile.path).isFile()) {
+				if (fs.statSync(upFile.path).isFile()) {
 					var exten = getFileExtension(upFile.originalname);
 					console.log("step3");
-					var newname = __dirname + "/" + upFile.path + "." + exten;
-					fs.renameSync(__dirname + "/" + upFile.path, newname);
+					var newname = upFile.path + "." + exten;
+					fs.renameSync(upFile.path, newname);
 					console.log("step4");
 					// bucket.upload(newname, function(err, file) {
 					s3Upload(upFile.path + "." + exten, newname, function(data, err) {
