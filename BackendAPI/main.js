@@ -604,7 +604,8 @@ app.post('/brizeo/upload/:userid/:type', upload.fields([{ name: 'uploadFile', ma
 											indexToDel = userinfo.otherProfileImages.indexOf(req.body.oldurl);
 											if (indexToDel != -1) {
 												if (upFile.fieldname == "uploadFile") {
-													userinfo.otherProfileImages[indexToDel] = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
+													// userinfo.otherProfileImages[indexToDel] = "https://storage.googleapis.com/brizeo-development-bf561.appspot.com/" + file.name;
+													userinfo.otherProfileImages[indexToDel] = data.Location;
 													if (req.files['thumbnailImage'] == undefined) {
 														thumbnail.ensureThumbnail(upFile.filename + "." + exten, 400, null, function(err, filename) {
 															console.log("----err----", err);
