@@ -22,6 +22,7 @@ var AWS = require("aws-sdk");
 var fileType = require("file-type");
 AWS.config.loadFromPath(__dirname + "/dev_configs/s3-cred.json");
 var s3 = new AWS.S3();
+var mime = require('mime');
 // S3 Bucket - AB :: END
 
 
@@ -2555,7 +2556,7 @@ function getPaginatedItems(items, page) {
 }
 
 // AB - Upload to amazon s3 server - START
-function s3Upload(fileName, pathToFile, mime, callback) {
+function s3Upload(fileName, pathToFile, callback) {
 	console.log('s3UploadFunction');
 	var albumPhotosKey = encodeURIComponent("uploads") + '/',
 		photoKey = albumPhotosKey + fileName,
@@ -2569,10 +2570,11 @@ function s3Upload(fileName, pathToFile, mime, callback) {
 			Key: photoKey,
 			Body: fsReadStream,
 			ACL: 'public-read'
-		};
+		},
+		mimeType = mime.lookup(pathToFile);
 	
-	if(mime !== undefined && mime.length) 
-		uploadConfigObj.ContentType = mime;
+	if(mimeType !== undefined && mimeType.length) 
+		uploadConfigObj.ContentType = mimeType;
 
 	console.log("s3UploadFunc - Step 1");
 	S3.upload(uploadConfigObj, function(err, data) {
