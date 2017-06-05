@@ -342,7 +342,7 @@ app.post('/users', function(req, res) {
 	newuser.otherProfileImages = [];
 	newuser.thumbnailImages = [];
 	console.log(downUrls);
-	async.forEach(downUrls, function(downUrl, callback) {
+	async.forEachSeries(downUrls, function(downUrl, callback) {
 		console.log("step1---", downUrl);
 		var exten = getFileExtension(downUrl);
 		filename = randomstring.generate(32) + "." + exten
@@ -701,11 +701,15 @@ app.put('/brizeo/users/:userid', function (req, res) {
 	});
 });
 
-var getUpSuperUserMoment = function (moments) {
+var getUpSuperUserMoment = function (moments, returnSuperUserMoment) {
+	var returnSuperUserMoment = returnSuperUserMoment || false;
 	superusermoments = lodash.filter(moments, { userId: superUserId });
+	if(returnSuperUserMoment) {
+		return superusermoments;
+	}
 	newmoments = lodash.reject(moments, { userId: superUserId });
 	newmoments = lodash.concat(superusermoments, newmoments);
-	console.log(newmoments.length)
+	console.log("Super User Search Function --------------------------", newmoments.length, superusermoments)
 	return newmoments;
 }
 
@@ -842,8 +846,9 @@ app.get('/brizeo/allmoments/:sort/:filter/:pageNo', function (req, res) {
 				}, function (err) {
 					console.log(moments.length)
 					if (req.params.sort == "popular"){
-						moments=getPaginatedItems(moments,pageNo);
-						res.send(getUpSuperUserMoment(moments));
+						superUserMoment = getUpSuperUserMoment(moments, true);
+						paginatedItems = getPaginatedItems(moments, pageNo, superUserMoment);
+						res.send(paginatedItems);
 					}
 					else{
 						moments=getPaginatedItems(moments,pageNo);
@@ -2551,11 +2556,14 @@ function intersection_destructive(a, b)
 }
 
 
-function getPaginatedItems(items, page) {
+function getPaginatedItems(items, page, superUserMoment) {
 	var page = page || 1,
-	    per_page = 35,
-	    offset = (page - 1) * per_page,
-	    paginatedItems = lodash.drop(items, offset).slice(0, per_page);
+		per_page = 35,
+		offset = (page - 1) * per_page,
+		paginatedItems = lodash.drop(items, offset).slice(0, per_page);
+		if(superUserMoment) {
+			paginatedItems = lodash.concat(superUserMoment, paginatedItems);	
+		}
 	return paginatedItems;
 }
 
