@@ -1737,6 +1737,17 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 								var maxAgeTest=usr.age <= maxage;
 								var genderTest=pref.genders.indexOf(usr.gender) != -1;
 								var overAllTest=searchTest && minAgeTest && maxAgeTest && genderTest;
+								// Nationality based search :: START
+								if ((pref.hasOwnProperty("searchNationality") && pref.searchNationality.length)) {
+									console.log("Nationality based search!");
+									var nationalityTest = false;
+									if(usr.hasOwnProperty("nationality")) {
+										nationalityTest = pref.searchNationality === usr.nationality;
+									}
+									overAllTest = overAllTest && nationalityTest;
+								}
+								// Nationality based search :: END
+
 								if(overAllTest){
 									console.log("usr founddddddddddddddddddd");
 									if(doNotIncludeThisUsers.indexOf(usr.objectId)<0){
@@ -1745,11 +1756,11 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 								}
 						},function(err){
 							console.log("err called");
-							aryuser=lodash.sortBy(aryuser,"distance");
+							aryuser = getSortedUserList(aryuser, curuser);
 							res.send(aryuser);
 						});
 						console.log(aryuser.length);
-						aryuser=lodash.sortBy(aryuser,"distance");
+						aryuser = getSortedUserList(aryuser, curuser);
 						res.json(aryuser);
 					}
 				});
@@ -2605,6 +2616,41 @@ function s3Upload(fileName, pathToFile, callback) {
 			callback(data);
 		}
 	});
+}
+
+/**
+ * getSortedUserList - Returns a new array with following sorting.
+ * 1. Find the users from foundUsers who have the matching primary
+ *    passion ID, and sort the new set with distance in ASC order.
+ * 2. Sort the remaining list with distance in ASC order.
+ * 3. Create a new list in passion sorted first then rest manner.
+ *
+ * @param array foundUsers - Users found based on the search criteria.
+ * @param object userWhoIsSearching - Object for the user who is looking
+ *                                    for the new matches.
+ * @return array sortedUser - List same as found users, sorted based on above
+ *                            criteria.
+ */
+function getSortedUserList(foundUsers, userWhoIsSearching) {
+    console.log("getSortedUserList - Function");
+
+    if(!foundUsers.length) {
+        return foundUsers;
+    }
+
+    if(!userWhoIsSearching.hasOwnProperty("primaryPassionId")) {
+        console.log("User who is searching does not have primary passion id. Sorting based on distance only", "UserID:: ", userWhoIsSearching.objectId);
+        return lodash.sortBy(foundUsers, "distance");
+    }
+
+    var sortedUsers = [],
+        usersWithCommonPrimaryPassion = [],
+        remainingUsers = [];
+
+    usersWithCommonPrimaryPassion = lodash.sortBy(lodash.filter(foundUsers, {"primaryPassionId": userWhoIsSearching.primaryPassionId}), "distance");
+    remainingUsers = lodash.sortBy(lodash.reject(foundUsers, {"primaryPassionId": userWhoIsSearching.primaryPassionId}), "distance");
+    sortedUsers = usersWithCommonPrimaryPassion.concat(remainingUsers);
+    return sortedUsers;
 }
 
 module.exports = app;
