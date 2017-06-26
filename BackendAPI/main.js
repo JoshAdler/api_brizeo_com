@@ -2042,6 +2042,7 @@ app.put('/brizeo/moments/:momentid', function (req, res) {
 app.get('/brizeo/mutual_friends/:userid/:accessToken', function (req, appRes) {
 	var accessToken = req.params.accessToken;
 	var userid = req.params.userid;
+	console.log("------------------API 31--- Get Mutual Friends ------------------", "accessToken:::", accessToken, "userid:::", userid);
 	FB.setAccessToken(accessToken);
 	FB.api(userid + '?fields=context.fields(mutual_friends)', function (res) {
 		if (!res || res.error) {
