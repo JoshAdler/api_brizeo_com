@@ -2039,7 +2039,7 @@ app.put('/brizeo/moments/:momentid', function (req, res) {
 });
 
 //31 Get Mutual friends
-app.get('/brizeo/mutual_friends/:userid/:accessToken', function (req, appRes) {
+app.get('/brizeo/mutual_friends/:accessToken/:userid', function (req, appRes) {
 	var accessToken = req.params.accessToken;
 	var userid = req.params.userid;
 	console.log("------------------API 31--- Get Mutual Friends ------------------", "accessToken:::", accessToken, "userid:::", userid);
@@ -2054,6 +2054,7 @@ app.get('/brizeo/mutual_friends/:userid/:accessToken', function (req, appRes) {
 		if (contextId) {
 			FB.api(contextId + '/all_mutual_friends', function (response) {
 				mutual_friends = response;
+				console.log('Mutual Firends Data:::', mutual_friends);
 				appRes.json(mutual_friends.data);
 			});
 		} else {
