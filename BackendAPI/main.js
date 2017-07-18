@@ -99,6 +99,7 @@ var preferencesRef = db.ref("/Preferences");
 var momentImagesRef = db.ref("/MomentImages");
 var momentImageLikesRef = db.ref("/MomentImageLikes");
 var passionsRef = db.ref("/Passions");
+var interestRef = db.ref("/Interests");
 var matchRef = db.ref("/Match");
 var notificationRef = db.ref("/Notifications");
 var eventsRef = db.ref("/Events");
@@ -1112,6 +1113,18 @@ app.get('/brizeo/passions', function (req, res) {
 			res.status(404).end();
 		}
 	});
+});
+
+//11.1) getExtendedPassions (It means «travel», «foodie», etc.)
+app.get('/brizeo/getExtendedPassions', function(req, res) {
+    console.log("----------------API------11.1------------");
+    interestRef.once("value", function(snapshot) {
+        if (snapshot.exists()) {
+            res.send(snapshot.val());
+        } else {
+            res.status(404).end();
+        }
+    });
 });
 
 //12) GetLikersForMomentByMomentId
