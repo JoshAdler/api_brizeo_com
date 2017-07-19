@@ -2684,8 +2684,8 @@ function getSortedUserList(foundUsers, userWhoIsSearching) {
 
     var usersWithCommonPassion = [];
     usersWithCommonPassion = lodash.orderBy(foundUsersPassions, ["sharedPassions"],["desc"]);
-    //console.log("============================== Sorted Arrrayyyy =======================");
-    //console.log(usersWithCommonPassion);
+    console.log("============================== Sorted Arrrayyyy =======================");
+    console.log(usersWithCommonPassion);
     return usersWithCommonPassion;    
 }
 
