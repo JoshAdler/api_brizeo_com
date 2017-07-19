@@ -2646,7 +2646,7 @@ function s3Upload(fileName, pathToFile, callback) {
  * @return array sortedUser - List same as found users, sorted based on above
  *                            criteria.
  */
-function getSortedUserList(foundUsers, userWhoIsSearching) {
+/*function getSortedUserList(foundUsers, userWhoIsSearching) {
     console.log("getSortedUserList - Function");
 
     if(!foundUsers.length) {
@@ -2666,6 +2666,27 @@ function getSortedUserList(foundUsers, userWhoIsSearching) {
     remainingUsers = lodash.sortBy(lodash.reject(foundUsers, {"primaryPassionId": userWhoIsSearching.primaryPassionId}), "distance");
     sortedUsers = usersWithCommonPrimaryPassion.concat(remainingUsers);
     return sortedUsers;
+}*/
+
+function getSortedUserList(foundUsers, userWhoIsSearching) {
+    console.log("getSortedUserList - Function");
+    //console.log("========== User List =============");
+    var foundUsersPassions = foundUsers;
+    var diff;
+    for(obj in foundUsersPassions){
+        diff = lodash.intersection(userWhoIsSearching.passions, foundUsersPassions[obj].passions);        
+        foundUsersPassions[obj].sharedPassions = diff.length;        
+    }    
+
+    if(!foundUsers.length) {
+        return foundUsers;
+    }
+
+    var usersWithCommonPassion = [];
+    usersWithCommonPassion = lodash.orderBy(foundUsersPassions, ["sharedPassions"],["desc"]);
+    //console.log("============================== Sorted Arrrayyyy =======================");
+    //console.log(usersWithCommonPassion);
+    return usersWithCommonPassion;    
 }
 
 module.exports = app;
