@@ -241,6 +241,11 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 				}
 				console.log('step4');
 				if (user.hasOwnProperty("deviceToken")) {
+					notificationRef.orderByChild("sendUser").equalTo(receiveUser).once("value", function (snapshot) {
+                        if (!snapshot.exists()) return;
+                        var notificationCount = snapshot.numChildren();
+                        console.log("notificationCount ====" + notificationCount);
+                    });
 					//add sound in notification: i.e notification.body, sound
 					var message = {
 						to: user.deviceToken, // required fill with device token or topics
@@ -250,7 +255,8 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 						},
 						notification: {
 							body: sendtext,
-							sound:soundType
+							sound:soundType,
+                            badge: notificationCount						
 						}
 					};
 					sendPushNotification(message)
