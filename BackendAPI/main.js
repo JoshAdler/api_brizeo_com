@@ -247,10 +247,10 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 					notificationRef.orderByChild("sendUser").equalTo(receiveUser).once("value", function (snapshot) {
                         if (!snapshot.exists()) return;
                         console.log("snapshot.val().isAlreadyViewed" + snapshot.val().isAlreadyViewed);
-                        //console.log("snapshot.val()" , snapshot.val());
+                        console.log("snapshot.val()" , snapshot.val());
                         var obj = snapshot.val();
                         for(a in obj){
-					      console.log("The " + a.key + " rating is " );//+ a[a.key].hasOwnProperty("isAlreadyViewed"));
+					      console.log("The " + obj[a].hasOwnProperty("isAlreadyViewed") + " rating is " );//+ a[a.key].hasOwnProperty("isAlreadyViewed"));
                         }					   
 
                         if(snapshot.val() && snapshot.val().isAlreadyViewed == false){                        	
