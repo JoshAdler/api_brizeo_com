@@ -245,7 +245,8 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 					notificationRef.orderByChild("sendUser").equalTo(receiveUser).once("value", function (snapshot) {
                         if (!snapshot.exists()) return;
                         notificationCount = snapshot.numChildren();
-                        console.log("Ameee === " + snapshot.val().isAlreadyViewed);
+                        console.log("snapshot	=======" + snapshot.exists());
+                        console.log("Ameee === " + snapshot.val());
                         console.log("notificationCount ====" + notificationCount);
                     });
 					//add sound in notification: i.e notification.body, sound
