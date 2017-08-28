@@ -250,7 +250,7 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
                         //console.log("snapshot.val()" , snapshot.val());
                         var obj = snapshot.val();
                         obj.forEach(function(obj) {
-					      console.log("The " + obj.key + " rating is " + obj.hasOwnProperty("isAlreadyViewed"));
+					      console.log("The " + obj.key + " rating is " + obj[obj.key].hasOwnProperty("isAlreadyViewed"));
 					   });
 
                         if(snapshot.val() && snapshot.val().isAlreadyViewed == false){                        	
