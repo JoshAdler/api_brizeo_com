@@ -249,7 +249,7 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
                         //console.log("snapshot.val()" , snapshot.val());
                         var obj = snapshot.val();
                         for(a in obj){
-                        	if(obj[a].hasOwnProperty("isAlreadyViewed") && obj[a].hasOwnProperty("isAlreadyViewed") == false){
+                        	if(obj[a].hasOwnProperty("isAlreadyViewed") && obj[a].isAlreadyViewed == false){
                         		notificationCount++;
                         	}
 					      	console.log("The " + obj[a].hasOwnProperty("isAlreadyViewed"));
