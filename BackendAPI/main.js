@@ -239,11 +239,12 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 						return;
 					}
 				}
-				console.log('step4');
+				console.log('step4 ++++ badge number');
+				var notificationCount = 0;
 				if (user.hasOwnProperty("deviceToken")) {
 					notificationRef.orderByChild("sendUser").equalTo(receiveUser).once("value", function (snapshot) {
                         if (!snapshot.exists()) return;
-                        var notificationCount = snapshot.numChildren();
+                        notificationCount = snapshot.numChildren();
                         console.log("notificationCount ====" + notificationCount);
                     });
 					//add sound in notification: i.e notification.body, sound
