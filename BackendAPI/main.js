@@ -246,9 +246,8 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 					notificationRef.orderByChild("isAlreadyViewed").equalTo(false).once("value", function (snapshot) {
                         if (!snapshot.exists()) return;
                         notificationCount = snapshot.numChildren();
-                        console.log("ameee 11111");                        
+                        console.log("ameee 11111");
                         console.log("notificationCount ====" + notificationCount);
-                    });
 					//add sound in notification: i.e notification.body, sound
 					var message = {
 						to: user.deviceToken, // required fill with device token or topics
@@ -263,6 +262,7 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 						}
 					};
 					sendPushNotification(message)
+                    });
 				}
 			});
 
