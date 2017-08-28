@@ -244,7 +244,8 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 				
 				if (user.hasOwnProperty("deviceToken")) {
 					notificationRef.orderByChild("isAlreadyViewed").equalTo(false).once("value", function (snapshot) {
-                        if (!snapshot.exists()) return;
+						console.log("ameee "+ snapshot.exists());
+                        //if (!snapshot.exists()) return;
                         var notificationCount = snapshot.numChildren();
                         console.log("ameee 11111");
                         console.log("notificationCount ====" + notificationCount);
