@@ -246,18 +246,21 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 					var notificationCount = 0;
 					notificationRef.orderByChild("sendUser").equalTo(receiveUser).once("value", function (snapshot) {
                         if (!snapshot.exists()) return;
-                        console.log("snapshot.val().isAlreadyViewed" + snapshot.val().isAlreadyViewed);
-                        console.log("snapshot.val()" , snapshot.val());
+                        //console.log("snapshot.val()" , snapshot.val());
                         var obj = snapshot.val();
                         for(a in obj){
-					      console.log("The " + obj[a].hasOwnProperty("isAlreadyViewed") + " rating is " );//+ a[a.key].hasOwnProperty("isAlreadyViewed"));
-                        }					   
+                        	if(obj[a].hasOwnProperty("isAlreadyViewed")){
+                        		notificationCount++;
+                        	}
+					      	console.log("The " + obj[a].hasOwnProperty("isAlreadyViewed"));
+					      	console.log("counttt===== "+ notificationCount);
+                        }
 
-                        if(snapshot.val() && snapshot.val().isAlreadyViewed == false){                        	
+                        /*if(snapshot.val() && snapshot.val().isAlreadyViewed == false){
 	                        notificationCount = snapshot.numChildren();
 	                        console.log("ameee 11111");
 	                        console.log("notificationCount ====" + notificationCount);
-                        }
+                        }*/
 					//add sound in notification: i.e notification.body, sound
 					var message = {
 						to: user.deviceToken, // required fill with device token or topics
