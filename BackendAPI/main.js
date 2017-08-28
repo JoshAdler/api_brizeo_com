@@ -199,7 +199,8 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 		receiveUser: receiveUser,
 		pushType: type,
 		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString()
+		updatedAt: new Date().toISOString(),
+		isAlreadyViewed: false
 	}
 
 	usersRef.child(sendUser).once("value", function (snapshot) {
@@ -242,18 +243,12 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 				console.log('step4 ++++ badge number');
 				var notificationCount;
 				if (user.hasOwnProperty("deviceToken")) {
-					notificationRef.orderByChild("sendUser").equalTo(receiveUser).once("value", function (snapshot) {
+					notificationRef.orderByChild("isAlreadyViewed").equalTo(false).once("value", function (snapshot) {
                         if (!snapshot.exists()) return;
+                        notificationCount = snapshot.numChildren();
+                        console.log("ameee 11111");                        
+                        console.log("notificationCount ====" + notificationCount);
                     });
-
-                    notificationRef.orderByChild("isAlreadyViewed").once("value",function (data) {
-                    	console.log("another try !!");
-                    	console.log(data.exists());
-                    	notificationCount = data.numChildren();
-                        console.log("snapshot	=======");
-                        console.log("Ameee === " + data.val());
-
-                    })
 					//add sound in notification: i.e notification.body, sound
 					var message = {
 						to: user.deviceToken, // required fill with device token or topics
