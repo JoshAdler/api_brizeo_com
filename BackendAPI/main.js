@@ -243,18 +243,17 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 				console.log('step4 ++++ badge number');
 				
 				if (user.hasOwnProperty("deviceToken")) {
+					var notificationCount;
 					notificationRef.orderByChild("sendUser").equalTo(receiveUser).once("value", function (snapshot) {
                         if (!snapshot.exists()) return;
                         console.log("snapshot.val().isAlreadyViewed" + snapshot.val().isAlreadyViewed);
                         console.log("snapshot.val()" + snapshot.val());
 
                         if(snapshot.val() && snapshot.val().isAlreadyViewed == false){                        	
-	                        var notificationCount = snapshot.numChildren();
+	                        notificationCount = snapshot.numChildren();
 	                        console.log("ameee 11111");
 	                        console.log("notificationCount ====" + notificationCount);
                         }
-                    });
-                        
 					//add sound in notification: i.e notification.body, sound
 					var message = {
 						to: user.deviceToken, // required fill with device token or topics
@@ -265,10 +264,12 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 						notification: {
 							body: sendtext,
 							sound:soundType,
-                            badge: notificationCount						
+                            badge: notificationCount
 						}
 					};
-					sendPushNotification(message)                    
+					sendPushNotification(message)
+                    });
+                        
 				}
 			});
 
