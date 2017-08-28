@@ -247,6 +247,7 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 						console.log("ameee "+ snapshot.exists());
                         //if (!snapshot.exists()) return;
                         var notificationCount = snapshot.numChildren();
+                        console.log(var notificationCount = snapshot.numChildren());
                         console.log("ameee 11111");
                         console.log("notificationCount ====" + notificationCount);
 					//add sound in notification: i.e notification.body, sound
