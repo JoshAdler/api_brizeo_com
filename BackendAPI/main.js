@@ -1775,7 +1775,7 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 								var overAllTest=searchTest && minAgeTest && maxAgeTest && genderTest;
 								// Nationality based search :: START
 								if ((pref.hasOwnProperty("searchNationality") && pref.searchNationality.length)) {
-									console.log("Nationality based search!");
+									//console.log("Nationality based search!");
 									var nationalityTest = false;
 									if(usr.hasOwnProperty("nationality")) {
 										nationalityTest = pref.searchNationality === usr.nationality;
@@ -1791,8 +1791,8 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 	                                if(usr.hasOwnProperty("studyInfo")) {
 	                                    /*console.log("Pref =========== "+pref.searchUniversity);
 	                                    console.log("Userr ===== "+usr.studyInfo);*/
-	                                    searchUniversityTest = pref.searchUniversity == usr.studyInfo;
-	                                    console.log("compare ===== ameee ======== "+searchUniversityTest);
+	                                    searchUniversityTest = pref.searchUniversity === usr.studyInfo;
+	                                    //console.log("compare ===== ameee ======== "+searchUniversityTest);
 	                                }
 	                                overAllTest = overAllTest && searchUniversityTest;
 	                            }
