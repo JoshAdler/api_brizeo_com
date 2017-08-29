@@ -207,12 +207,12 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 		if (!snapshot.exists()) return;
 		var sendtext = "";
 		var soundType="";
-/*First name Only logic*/
+	/*First name Only logic*/
 		var displayName=snapshot.val().displayName;
 		if(displayName.split(" ").length>1){
 			displayName=displayName.split(" ")[0];
 		}
-/*First name Only logic endsss.*/		
+	/*First name Only logic endsss.*/		
 		if (type == "newmatch") {
 			newnotification.newmatchid = id;
 			sendtext = displayName + " matched you.";
@@ -255,7 +255,6 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 					      	console.log("The " + obj[a].hasOwnProperty("isAlreadyViewed"));
 					      	console.log("counttt===== "+ notificationCount);
                         }
-
                         /*if(snapshot.val() && snapshot.val().isAlreadyViewed == false){
 	                        notificationCount = snapshot.numChildren();
 	                        console.log("ameee 11111");
@@ -1720,6 +1719,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 	return d;
 }
 
+//23) approve user for match
 app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 	console.log("----------------API------23------------");
 	usersRef.child(req.params.userid).once("value", function (snapshot) {
@@ -1784,8 +1784,21 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 								}
 								// Nationality based search :: END
 
+								// University based search
+	                            if ((pref.hasOwnProperty("searchUniversity") && pref.searchUniversity.length)) {
+	                                //console.log("searchUniversity based search!");
+	                                var searchUniversityTest = false;
+	                                if(usr.hasOwnProperty("studyInfo")) {
+	                                    /*console.log("Pref =========== "+pref.searchUniversity);
+	                                    console.log("Userr ===== "+usr.studyInfo);*/
+	                                    searchUniversityTest = pref.searchUniversity == usr.studyInfo;
+	                                    console.log("compare ===== ameee ======== "+searchUniversityTest);
+	                                }
+	                                overAllTest = overAllTest && searchUniversityTest;
+	                            }
+
 								if(overAllTest){
-									console.log("usr founddddddddddddddddddd");
+									//console.log("usr founddddddddddddddddddd");
 									if(doNotIncludeThisUsers.indexOf(usr.objectId)<0){
 										aryuser.push(usr);
 									}
@@ -2708,7 +2721,7 @@ function getSortedUserList(foundUsers, userWhoIsSearching) {
     var usersWithCommonPassion = [];
     usersWithCommonPassion = lodash.orderBy(foundUsersPassions, ["sharedPassions"],["desc"]);
     console.log("============================== Sorted Arrrayyyy =======================");
-    console.log(usersWithCommonPassion);
+    //console.log(usersWithCommonPassion);
     return usersWithCommonPassion;    
 }
 
