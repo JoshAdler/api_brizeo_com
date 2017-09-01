@@ -1709,6 +1709,33 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 	return d;
 }
 
+function calculateLatLong(lat, lon, distance) {
+    var R = 6378.1;
+    var brng = 1.57;
+    var d = 12874.75; //distance in KM
+    var lat1, lon1;
+    //console.log("latitude === "+ lat + " === longitude ==== " +  lon + " === distance == " + distance);  
+    // Converts from degrees to radians.
+    Math.radians = function(degrees) {
+      return degrees * Math.PI / 180;
+    };  
+
+    // Converts from radians to degrees.
+    Math.degrees = function(radians) {
+      return radians * 180 / Math.PI;
+    };
+
+    lat1 = Math.radians(lat);
+    lon1 = Math.radians(lon);
+    lat2 = Math.asin( Math.sin(lat1)*Math.cos(d/R) + Math.cos(lat1)*Math.sin(d/R)*Math.cos(brng));
+    lon2 = lon1 + Math.atan2(Math.sin(brng)*Math.sin(d/R)*Math.cos(lat1), Math.cos(d/R)-Math.sin(lat1)*Math.sin(lat2));
+     
+    lat2 = Math.degrees(lat2);
+    lon2 = Math.degrees(lon2);
+    var staticLatlon = { "lat2": lat2, "lon2":lon2 };
+    return staticLatlon;
+}
+
 //23) approve user for match
 app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 	console.log("----------------API------23------------");
@@ -1726,9 +1753,10 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 					console.log("assinging new pred");
 					pref = newpref;
 				}
-				if (!pref.hasOwnProperty("searchLocation")) pref.searchLocation = curuser.currentLocation;
-				console.log("pref",pref);
-				distance = pref.maxSearchDistance;
+				//if (!pref.hasOwnProperty("searchLocation")) pref.searchLocation = curuser.currentLocation;
+				staticDistance = 8000;
+				//distance = pref.maxSearchDistance;
+                distance = pref.hasOwnProperty("searchLocation") ? pref.maxSearchDistance : staticDistance;				
 				maxage = pref.upperAgeLimit;
 				minage = pref.lowerAgeLimit;
 				searchLocation = pref.searchLocation;
@@ -1756,8 +1784,15 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 							/*search criteriass*/
 							var searchTest=false;
 							if(usr.currentLocation){
-								usr["distance"]=calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"],searchLocation.latitude, searchLocation.longitude);
-								searchTest=calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"],searchLocation.latitude, searchLocation.longitude) < distance;
+								if(pref.hasOwnProperty("searchLocation")){                                    
+                                    usr["distance"] = calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], searchLocation.latitude, searchLocation.longitude);
+                                    searchTest = calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], searchLocation.latitude, searchLocation.longitude) < distance;
+                                }else{
+                                    var staticLatlon = calculateLatLong(usr.currentLocation["latitude"], usr.currentLocation["longitude"], staticDistance);
+                                    //console.log("function return ==== " , staticLatlon);
+                                    usr["distance"] = calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], staticLatlon.lat2, staticLatlon.lon2);
+                                    searchTest = calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], staticLatlon.lat2, staticLatlon.lon2) < distance;
+                                }
 							}
 								var minAgeTest=usr.age >= minage;
 								var maxAgeTest=usr.age <= maxage;
