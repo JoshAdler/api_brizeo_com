@@ -1808,12 +1808,10 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 								if ((pref.hasOwnProperty("searchNationality") && pref.searchNationality.length)) {
 									//console.log("Nationality based search!");
 									var nationalityTest = false;
-									if(usr.hasOwnProperty("nationality")) {
-										if (!pref.hasOwnProperty("searchLocation")) {
-											nationalityTest = true;
-										}else{
-											nationalityTest = pref.searchNationality === usr.nationality;
-										}
+									if(usr.hasOwnProperty("nationality")) {									
+										nationalityTest = pref.searchNationality === usr.nationality;
+									}else{											
+											nationalityTest = true;										
 									}
 									overAllTest = overAllTest && nationalityTest;
 								}
@@ -1824,15 +1822,13 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 	                                //console.log("searchUniversity based search!");
 	                                var searchUniversityTest = false;
 	                                if(usr.hasOwnProperty("studyInfo")) {
-	                                	if (!pref.hasOwnProperty("searchLocation")) {
-	                                		searchUniversityTest = true;
-	                                	}else{
-		                                    /*console.log("Pref =========== "+pref.searchUniversity);
-		                                    console.log("Userr ===== "+usr.studyInfo);*/
-		                                    searchUniversityTest = pref.searchUniversity === usr.studyInfo;
-		                                    //console.log("compare ===== ameee ======== "+searchUniversityTest);
-	                                    }
-	                                }
+	                                	/*console.log("Pref =========== "+pref.searchUniversity);
+	                                    console.log("Userr ===== "+usr.studyInfo);*/
+	                                    searchUniversityTest = pref.searchUniversity === usr.studyInfo;
+	                                    //console.log("compare ===== ameee ======== "+searchUniversityTest);
+                                	}else{
+                                		searchUniversityTest = true;	                                    
+                                	}
 	                                overAllTest = overAllTest && searchUniversityTest;
 	                            }
 
