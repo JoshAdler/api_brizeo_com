@@ -1805,32 +1805,29 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 								var genderTest=pref.genders.indexOf(usr.gender) != -1;
 								var overAllTest=searchTest && minAgeTest && maxAgeTest && genderTest;
 								// Nationality based search :: START
+								var nationalityTest = false;
 								if ((pref.hasOwnProperty("searchNationality") && pref.searchNationality.length)) {
-									//console.log("Nationality based search!");
-									var nationalityTest = false;
-									if(usr.hasOwnProperty("nationality")) {									
-										nationalityTest = pref.searchNationality === usr.nationality;
-									}else{											
-											nationalityTest = true;										
-									}
+									//console.log("Nationality based search!");									
+									nationalityTest = pref.searchNationality === usr.nationality;
+									overAllTest = overAllTest && nationalityTest;
+								}else if(!pref.hasOwnProperty("searchNationality")){
+									nationalityTest = true;
 									overAllTest = overAllTest && nationalityTest;
 								}
+								
 								// Nationality based search :: END
 
 								// University based search
+	                            var searchUniversityTest = false;
 	                            if ((pref.hasOwnProperty("searchUniversity") && pref.searchUniversity.length)) {
 	                                //console.log("searchUniversity based search!");
-	                                var searchUniversityTest = false;
-	                                if(usr.hasOwnProperty("studyInfo")) {
-	                                	/*console.log("Pref =========== "+pref.searchUniversity);
-	                                    console.log("Userr ===== "+usr.studyInfo);*/
-	                                    searchUniversityTest = pref.searchUniversity === usr.studyInfo;
-	                                    //console.log("compare ===== ameee ======== "+searchUniversityTest);
-                                	}else{
-                                		searchUniversityTest = true;	                                    
-                                	}
-	                                overAllTest = overAllTest && searchUniversityTest;
-	                            }
+                                    searchUniversityTest = pref.searchUniversity === usr.studyInfo;
+                                    //console.log("compare ===== ameee ======== "+searchUniversityTest);
+		                            overAllTest = overAllTest && searchUniversityTest;
+	                            }else if(!pref.hasOwnProperty("searchUniversity")){
+                                	searchUniversityTest = true;
+	                            	overAllTest = overAllTest && searchUniversityTest;                                	
+                                }
 
 								if(overAllTest){
 									//console.log("usr founddddddddddddddddddd");
