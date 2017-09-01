@@ -1809,7 +1809,11 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 									//console.log("Nationality based search!");
 									var nationalityTest = false;
 									if(usr.hasOwnProperty("nationality")) {
-										nationalityTest = pref.searchNationality === usr.nationality;
+										if (!pref.hasOwnProperty("searchLocation")) {
+											nationalityTest = true;
+										}else{
+											nationalityTest = pref.searchNationality === usr.nationality;
+										}
 									}
 									overAllTest = overAllTest && nationalityTest;
 								}
@@ -1820,10 +1824,14 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 	                                //console.log("searchUniversity based search!");
 	                                var searchUniversityTest = false;
 	                                if(usr.hasOwnProperty("studyInfo")) {
-	                                    /*console.log("Pref =========== "+pref.searchUniversity);
-	                                    console.log("Userr ===== "+usr.studyInfo);*/
-	                                    searchUniversityTest = pref.searchUniversity === usr.studyInfo;
-	                                    //console.log("compare ===== ameee ======== "+searchUniversityTest);
+	                                	if (!pref.hasOwnProperty("searchLocation")) {
+	                                		searchUniversityTest = true;
+	                                	}else{
+		                                    /*console.log("Pref =========== "+pref.searchUniversity);
+		                                    console.log("Userr ===== "+usr.studyInfo);*/
+		                                    searchUniversityTest = pref.searchUniversity === usr.studyInfo;
+		                                    //console.log("compare ===== ameee ======== "+searchUniversityTest);
+	                                    }
 	                                }
 	                                overAllTest = overAllTest && searchUniversityTest;
 	                            }
