@@ -1777,6 +1777,7 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 					});
 				/*ends*/
 				var aryuser = [];
+				var staticLatlon;
 				usersRef.once('value',function(snapshot){
 					if(snapshot.exists()){
 						otheruser = snapshot.val();
@@ -1785,15 +1786,18 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 							var searchTest=false;
 							if(usr.currentLocation){
 								if(pref.hasOwnProperty("searchLocation")){
-									console.log("old");
+									//console.log("old");
                                     usr["distance"] = calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], searchLocation.latitude, searchLocation.longitude);
                                     searchTest = calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], searchLocation.latitude, searchLocation.longitude) < distance;
                                 }else{
-                                    var staticLatlon = calculateLatLong(usr.currentLocation["latitude"], usr.currentLocation["longitude"], staticDistance);
-                                    console.log("function return ==== " , staticLatlon);
-                                    console.log("distance" + staticDistance);
+                                    staticLatlon = calculateLatLong(usr.currentLocation["latitude"], usr.currentLocation["longitude"], staticDistance);
+                                    /*console.log("function return ==== " , staticLatlon);
+                                    console.log("distance" + staticDistance);*/
                                     usr["distance"] = calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], staticLatlon.lat2, staticLatlon.lon2);
-                                    searchTest = calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], staticLatlon.lat2, staticLatlon.lon2) < staticDistance;
+                                    //searchTest = calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], staticLatlon.lat2, staticLatlon.lon2) < staticDistance;
+                                    searchTest = true;
+                                    /*console.log("calculateDistance ============== " + calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], staticLatlon.lat2, staticLatlon.lon2));
+                                    console.log("staticDistance ==== "+staticDistance);*/
                                 }
 							}
 								var minAgeTest=usr.age >= minage;
