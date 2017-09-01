@@ -25,7 +25,6 @@ var s3 = new AWS.S3();
 var mime = require('mime');
 // S3 Bucket - AB :: END
 
-
 FB.setApiVersion("v2.8");
 
 var serviceAccount = require(__dirname+"/dev_configs/brizeo-development-bf561-firebase-adminsdk-2bzrp-5ccecab264.json");
@@ -50,8 +49,6 @@ function makeJWT(username) {
 //app.use(express.bodyParser({limit: '50mb'}));
 //app.use(bodyParser.json({limit: '50mb'}));
 //app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
-
-
 
 firebase.initializeApp({
 	credential: firebase.credential.cert(serviceAccount),
@@ -84,13 +81,7 @@ var mailOptions = {
 	text: ''
 };
 
-
-
-
 var thumbnail = new Thumbnail(__dirname+'/uploads', __dirname+'/thumbnails');
-
-
-
 
 var db = firebase.database();
 
@@ -127,7 +118,6 @@ var newpref = {
 };
 
 var superUserId = "WlsuoQxwUB";
-
 
 var secretkey = "SeCrEtKeYfOrHaShInG";
 const authMiddleware = (req, res, next) => {
@@ -1040,17 +1030,17 @@ app.put('/brizeo/moments', upload.fields([{ name: 'uploadFile', maxCount: 1 }, {
 	newmoment.numberOfLikes = 0;
 
 	var upFiles = [];
-console.log("================req.files['uploadFile']",req.files['uploadFile']);
+	console.log("================req.files['uploadFile']",req.files['uploadFile']);
 	if (req.files['uploadFile'] != undefined) {
 		console.log("main");
 		upFiles = req.files['uploadFile'];
 	}
-console.log("===============req.files['thumbnailImage']",req.files['thumbnailImage']);
+	console.log("===============req.files['thumbnailImage']",req.files['thumbnailImage']);
 	if (req.files['thumbnailImage'] != undefined) {
 		console.log("other");
 		upFiles = upFiles.concat(req.files['thumbnailImage']);
 	}
-console.log("==============upFIles=====================",upFiles);
+	console.log("==============upFIles=====================",upFiles);
 	async.forEach(upFiles, function (upFile, callback) {
 		console.log(upFile);
 		if (fs.statSync(upFile.path).isFile()) {
@@ -2682,27 +2672,6 @@ function s3Upload(fileName, pathToFile, callback) {
  * @return array sortedUser - List same as found users, sorted based on above
  *                            criteria.
  */
-/*function getSortedUserList(foundUsers, userWhoIsSearching) {
-    console.log("getSortedUserList - Function");
-
-    if(!foundUsers.length) {
-        return foundUsers;
-    }
-
-    if(!userWhoIsSearching.hasOwnProperty("primaryPassionId")) {
-        console.log("User who is searching does not have primary passion id. Sorting based on distance only", "UserID:: ", userWhoIsSearching.objectId);
-        return lodash.sortBy(foundUsers, "distance");
-    }
-
-    var sortedUsers = [],
-        usersWithCommonPrimaryPassion = [],
-        remainingUsers = [];
-
-    usersWithCommonPrimaryPassion = lodash.sortBy(lodash.filter(foundUsers, {"primaryPassionId": userWhoIsSearching.primaryPassionId}), "distance");
-    remainingUsers = lodash.sortBy(lodash.reject(foundUsers, {"primaryPassionId": userWhoIsSearching.primaryPassionId}), "distance");
-    sortedUsers = usersWithCommonPrimaryPassion.concat(remainingUsers);
-    return sortedUsers;
-}*/
 
 function getSortedUserList(foundUsers, userWhoIsSearching) {
     console.log("getSortedUserList - Function");
