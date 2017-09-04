@@ -94,6 +94,7 @@ var preferencesRef = db.ref("/Preferences");
 var momentImagesRef = db.ref("/MomentImages");
 var momentImageLikesRef = db.ref("/MomentImageLikes");
 var passionsRef = db.ref("/Passions");
+var interestRef = db.ref("/Interests");
 var matchRef = db.ref("/Match");
 var notificationRef = db.ref("/Notifications");
 var eventsRef = db.ref("/Events");
@@ -200,12 +201,12 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 		if (!snapshot.exists()) return;
 		var sendtext = "";
 		var soundType="";
-/*First name Only logic*/
+	/*First name Only logic*/
 		var displayName=snapshot.val().displayName;
 		if(displayName.split(" ").length>1){
 			displayName=displayName.split(" ")[0];
 		}
-/*First name Only logic endsss.*/		
+	/*First name Only logic endsss.*/		
 		if (type == "newmatch") {
 			newnotification.newmatchid = id;
 			sendtext = displayName + " matched you.";
@@ -235,6 +236,18 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 				}
 				console.log('step4');
 				if (user.hasOwnProperty("deviceToken")) {
+					var notificationCount = 0;
+					notificationRef.orderByChild("sendUser").equalTo(receiveUser).once("value", function (snapshot) {
+                        if (!snapshot.exists()) return;
+                        //console.log("snapshot.val()" , snapshot.val());
+                        var obj = snapshot.val();
+                        for(a in obj){
+                        	if(obj[a].hasOwnProperty("isAlreadyViewed") && obj[a].isAlreadyViewed == false){
+                        		notificationCount++;
+                        	}
+					      	/*console.log("The " + obj[a].hasOwnProperty("isAlreadyViewed"));
+					      	console.log("counttt===== "+ notificationCount);*/
+                        }                        
 					//add sound in notification: i.e notification.body, sound
 					var message = {
 						to: user.deviceToken, // required fill with device token or topics
@@ -244,10 +257,12 @@ var registerNotification = function (sendUser, receiveUser, type, id) {
 						},
 						notification: {
 							body: sendtext,
-							sound:soundType
+							sound:soundType,
+                            badge: notificationCount
 						}
 					};
 					sendPushNotification(message)
+                    });
 				}
 			});
 
@@ -1219,6 +1234,18 @@ app.get('/brizeo/passions', function (req, res) {
 	});
 });
 
+//11.1) getExtendedPassions (It means «travel», «foodie», etc.)
+app.get('/brizeo/getExtendedPassions', function(req, res) {
+    console.log("----------------API------11.1------------");
+    interestRef.once("value", function(snapshot) {
+        if (snapshot.exists()) {
+            res.send(snapshot.val());
+        } else {
+            res.status(404).end();
+        }
+    });
+});
+
 //12) GetLikersForMomentByMomentId
 app.get('/brizeo/likemoments/users/:momentid/:userid', function (req, res) {
 	console.log("----------------API------12------------");
@@ -1790,6 +1817,33 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 	return d;
 }
 
+function calculateLatLong(lat, lon, distance) {
+    var R = 6378.1;
+    var brng = 1.57;
+    var d = 12874.75; //distance in KM
+    var lat1, lon1;
+    //console.log("latitude === "+ lat + " === longitude ==== " +  lon + " === distance == " + distance);  
+    // Converts from degrees to radians.
+    Math.radians = function(degrees) {
+      return degrees * Math.PI / 180;
+    };  
+
+    // Converts from radians to degrees.
+    Math.degrees = function(radians) {
+      return radians * 180 / Math.PI;
+    };
+
+    lat1 = Math.radians(lat);
+    lon1 = Math.radians(lon);
+    lat2 = Math.asin( Math.sin(lat1)*Math.cos(d/R) + Math.cos(lat1)*Math.sin(d/R)*Math.cos(brng));
+    lon2 = lon1 + Math.atan2(Math.sin(brng)*Math.sin(d/R)*Math.cos(lat1), Math.cos(d/R)-Math.sin(lat1)*Math.sin(lat2));
+     
+    lat2 = Math.degrees(lat2);
+    lon2 = Math.degrees(lon2);
+    var staticLatlon = { "lat2": lat2, "lon2":lon2 };
+    return staticLatlon;
+}
+
 //23) GetUsersForMatch
 app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 	console.log("----------------API------23------------");
@@ -1807,9 +1861,11 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 					console.log("assinging new pred");
 					pref = newpref;
 				}
-				if (!pref.hasOwnProperty("searchLocation")) pref.searchLocation = curuser.currentLocation;
-				console.log("pref",pref);
-				distance = pref.maxSearchDistance;
+				//if (!pref.hasOwnProperty("searchLocation")) pref.searchLocation = curuser.currentLocation;
+				//console.log("pref",pref);
+				staticDistance = 8000;
+				//distance = pref.maxSearchDistance;
+                distance = pref.hasOwnProperty("searchLocation") ? pref.maxSearchDistance : staticDistance;
 				maxage = pref.upperAgeLimit;
 				minage = pref.lowerAgeLimit;
 				searchLocation = pref.searchLocation;
@@ -1837,26 +1893,59 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
 							/*search criteriass*/
 							var searchTest=false;
 							if(usr.currentLocation){
-								usr["distance"]=calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"],searchLocation.latitude, searchLocation.longitude);
-								searchTest=calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"],searchLocation.latitude, searchLocation.longitude) < distance;
+								if(pref.hasOwnProperty("searchLocation")){
+                                    usr["distance"] = calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], searchLocation.latitude, searchLocation.longitude);
+                                    searchTest = calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], searchLocation.latitude, searchLocation.longitude) < distance;
+                                }else{
+                                    staticLatlon = calculateLatLong(usr.currentLocation["latitude"], usr.currentLocation["longitude"], staticDistance);                                    
+                                    usr["distance"] = calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], staticLatlon.lat2, staticLatlon.lon2);
+                                    searchTest = true;
+                                    /*console.log("calculateDistance ============== " + calculateDistance(usr.currentLocation["latitude"], usr.currentLocation["longitude"], staticLatlon.lat2, staticLatlon.lon2));
+                                    console.log("staticDistance ==== "+staticDistance);*/
+                                }
 							}
-								var minAgeTest=usr.age >= minage;
-								var maxAgeTest=usr.age <= maxage;
-								var genderTest=pref.genders.indexOf(usr.gender) != -1;
-								var overAllTest=searchTest && minAgeTest && maxAgeTest && genderTest;
-								if(overAllTest){
-									console.log("usr founddddddddddddddddddd");
-									if(doNotIncludeThisUsers.indexOf(usr.objectId)<0){
-										aryuser.push(usr);
-									}
+							var minAgeTest=usr.age >= minage;
+							var maxAgeTest=usr.age <= maxage;
+							var genderTest=pref.genders.indexOf(usr.gender) != -1;
+							var overAllTest=searchTest && minAgeTest && maxAgeTest && genderTest;
+
+							// Nationality based search :: START
+								var nationalityTest = false;
+								if ((pref.hasOwnProperty("searchNationality") && pref.searchNationality.length)) {
+									//console.log("Nationality based search!");									
+									nationalityTest = pref.searchNationality === usr.nationality;
+									overAllTest = overAllTest && nationalityTest;
+								}else if(!pref.hasOwnProperty("searchNationality")){
+									nationalityTest = true;
+									overAllTest = overAllTest && nationalityTest;
 								}
+							// Nationality based search :: END
+
+							// University based search
+	                            var searchUniversityTest = false;
+	                            if ((pref.hasOwnProperty("searchUniversity") && pref.searchUniversity.length)) {
+	                                //console.log("searchUniversity based search!");
+                                    searchUniversityTest = pref.searchUniversity === usr.studyInfo;
+                                    //console.log("compare ===== ameee ======== "+searchUniversityTest);
+		                            overAllTest = overAllTest && searchUniversityTest;
+	                            }else if(!pref.hasOwnProperty("searchUniversity")){
+                                	searchUniversityTest = true;
+	                            	overAllTest = overAllTest && searchUniversityTest;                                	
+                                }
+							// University based search
+							if(overAllTest){
+								//console.log("usr founddddddddddddddddddd");
+								if(doNotIncludeThisUsers.indexOf(usr.objectId)<0){
+									aryuser.push(usr);
+								}
+							}
 						},function(err){
 							console.log("err called");
-							aryuser=lodash.sortBy(aryuser,"distance");
+							aryuser=lodash.sortBy(aryuser,curuser);
 							res.send(aryuser);
 						});
 						console.log(aryuser.length);
-						aryuser=lodash.sortBy(aryuser,"distance");
+						aryuser=lodash.sortBy(aryuser,curuser);
 						res.json(aryuser);
 					}
 				});
@@ -2665,6 +2754,27 @@ function getPaginatedItems(items, page) {
 	    offset = (page - 1) * per_page,
 	    paginatedItems = lodash.drop(items, offset).slice(0, per_page);
 	return paginatedItems;
+}
+
+function getSortedUserList(foundUsers, userWhoIsSearching) {
+    console.log("getSortedUserList - Function");
+    //console.log("========== User List =============");
+    var foundUsersPassions = foundUsers;
+    var diff;
+    for(obj in foundUsersPassions){
+        diff = lodash.intersection(userWhoIsSearching.passions, foundUsersPassions[obj].passions);        
+        foundUsersPassions[obj].sharedPassions = diff.length;        
+    }    
+
+    if(!foundUsers.length) {
+        return foundUsers;
+    }
+
+    var usersWithCommonPassion = [];
+    usersWithCommonPassion = lodash.orderBy(foundUsersPassions, ["sharedPassions"],["desc"]);
+    //console.log("============================== Sorted Arrrayyyy =======================");
+    //console.log(usersWithCommonPassion);
+    return usersWithCommonPassion;    
 }
 
 module.exports = app;
