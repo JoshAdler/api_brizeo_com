@@ -2276,10 +2276,10 @@ app.put('/brizeo/allevents/:sort', function (req, res) {
         for (key in snapshot.val()) {
             event = snapshot.val()[key];
             var distance = calculateDistance(event.latitude, event.longitude, req.body.lat, req.body.lon);
-            //if (distance <= 50) {
+            if (distance <= 50) {
                 event.distance = distance;
                 searchedevents.push(event);
-            //}
+            }
         }
 
         searchedevents=lodash.sortBy(searchedevents, sortstr);
