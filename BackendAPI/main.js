@@ -1828,6 +1828,7 @@ app.get('/brizeo/approveuserformatch/:userid', function (req, res) {
                                 	searchUniversityTest = true;
 	                            	overAllTest = overAllTest && searchUniversityTest;                                	
                                 }
+								// University based search                                
 
 								if(overAllTest){
 									//console.log("usr founddddddddddddddddddd");
@@ -2193,7 +2194,7 @@ app.put('/brizeo/notifications/:notificationid', function (req, res) {
 	});
 });
 
-//34) getEvents
+/*//34) getEvents
 app.put('/brizeo/allevents/:sort', function (req, res) {
 	console.log("----------------API------34 get all Events------------");
 	var searchedevents = [];
@@ -2231,31 +2232,94 @@ app.put('/brizeo/allevents/:sort', function (req, res) {
 					if (snapshot.exists()) event.user = snapshot.val();
 					callback();
 				});
-				/**/		var fbids=event.attendingsIds;
-							var validUsers=[];
-							async.forEach(fbids, function (fbid, callback) {
-				                usersRef.orderByChild("facebookId").equalTo(fbid.toString()).once('value', function (snapshot) {
-				                        if (snapshot.exists()){
-				                        	console.log("matchhhhhhhhhhhh");
-				                        		for(key in snapshot.val()){
-				                             	   validUsers.push(snapshot.val()[key]);
-				                            }
-				                        }
-				                        callback();
-				                });
-				        }, function (err) {
-				                
-				        });
-				/**/
+					var fbids=event.attendingsIds;
+					var validUsers=[];
+					async.forEach(fbids, function (fbid, callback) {
+		                usersRef.orderByChild("facebookId").equalTo(fbid.toString()).once('value', function (snapshot) {
+		                        if (snapshot.exists()){
+		                        	console.log("matchhhhhhhhhhhh");
+		                        		for(key in snapshot.val()){
+		                             	   validUsers.push(snapshot.val()[key]);
+		                            }
+		                        }
+		                        callback();
+		                });
+		        }, function (err) {
+		                
+		        });				
 			} else
 				callback();
 		}, function (err) {
 			res.send(searchedevents);
 		});
 	})
+});*/
+
+//34) getEvents
+app.put('/brizeo/allevents/:sort', function (req, res) {
+    console.log("----------------API------34 get all Events------------");
+    var searchedevents = [];
+    console.log("==============================================34=======================================");
+    console.log("req.params.sort",req.params.sort);
+    console.log("req.body.lat",req.body.lat);
+    console.log("req.body.lon",req.body.lon);
+    console.log("==============================================34=========================================");
+    var sortstr = "distance";
+    if (req.params.sort == "popular") {
+        sortstr = "attendingsCount";
+    }
+    if(req.params.sort == "earliest"){
+        sortstr = "startDate";
+    }
+
+    eventsRef.once("value", function (snapshot) {
+        for (key in snapshot.val()) {
+            event = snapshot.val()[key];
+            var distance = calculateDistance(event.latitude, event.longitude, req.body.lat, req.body.lon);
+            //if (distance <= 50) {
+                event.distance = distance;
+                searchedevents.push(event);
+            //}
+        }
+
+        searchedevents=lodash.sortBy(searchedevents, sortstr);
+        if (sortstr == "attendingsCount"){
+            console.log("trying to reverse");            
+            searchedevents = searchedevents.reverse();
+        }
+        async.forEach(searchedevents, function (event, callback) {
+            if (event.hasOwnProperty("ownerUser")) {
+                usersRef.child(event.ownerUser).once("value", function (snapshot) {
+                    if (snapshot.exists()) event.user = snapshot.val();
+                    callback();
+                });
+                var fbids=event.attendingsIds;
+                var validUsers=[];
+                async.forEach(fbids, function (fbid, callback) {
+                    usersRef.orderByChild("facebookId").equalTo(fbid.toString()).once('value', function (snapshot) {
+                            if (snapshot.exists()){
+                                //console.log("matchhhhhhhhhhhh");
+                                for(key in snapshot.val()){
+                                   validUsers.push(snapshot.val()[key]);
+                                }
+                            }else{
+                                callback();
+                            }
+                    });
+                }, function (err) {
+                    //console.log(err);
+                });                
+            } else{
+                callback();
+            }
+        }, function (err) {
+            //console.log("result === ", searchedevents);
+            res.send(searchedevents);
+        });
+    })
 });
 
-	//35) get valid fbusers
+//35) get valid fbusers
 app.post('/brizeo/fbusers', function (req, res) {
         console.log("----------------API------35 Valid FB Users------------");
         var fbids = req.body.fbids;
