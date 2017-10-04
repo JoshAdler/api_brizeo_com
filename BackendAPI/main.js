@@ -95,6 +95,8 @@ var matchRef = db.ref("/Match");
 var notificationRef = db.ref("/Notifications");
 var eventsRef = db.ref("/Events");
 var testsRef = db.ref("/MyRef");
+var statusRef = db.ref("/Statuses");
+var religionRef = db.ref("/Religions");
 
 var res200 = {
 	status: 200,
@@ -2675,6 +2677,31 @@ app.put('/brizeo/events-by-users-matches/:userId/:sort',function(req,res){
 
 /*38 ends*/
 
+// 39) getAllStatuses for new development for dating
+app.get('/brizeo/getAllStatuses', function(req, res) {
+    console.log("----------------API------39------------");
+    statusRef.once("value", function(snapshot) {
+        if (snapshot.exists()) {
+            res.send(snapshot.val());
+        } else {
+            res.status(404).end();
+        }
+    });
+});
+// 39) getAllStatuses end
+
+// 40) getAllReligions for new development for dating
+app.get('/brizeo/getAllReligions', function(req, res) {
+    console.log("----------------API------40------------");
+    religionRef.once("value", function(snapshot) {
+        if (snapshot.exists()) {
+            res.send(snapshot.val());
+        } else {
+            res.status(404).end();
+        }
+    });
+});
+// 40) getAllReligions end
 
 /*utitlies function :if some user approved other user, and they are not already matched between each other*/
 function checkIfAlreadyMatched(usrId1,usrId2){
