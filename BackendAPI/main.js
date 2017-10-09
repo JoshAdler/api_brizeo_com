@@ -75,7 +75,7 @@ var smtpTransport = nodemailer.createTransport({
 
 var mailOptions = {
 	from: 'Brizeo Notification',
-	to: 'admin@brizeo.com',
+	to: 'help@divorcebond.com',
 	subject: 'Brizeo Notification',
 	text: ''
 };
