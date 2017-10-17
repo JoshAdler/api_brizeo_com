@@ -2824,7 +2824,20 @@ function getSortedUserList(foundUsers, userWhoIsSearching) {
     usersWithCommonPassion = lodash.orderBy(foundUsersPassions, ["sharedPassions"],["desc"]);
     console.log("============================== Sorted Arrrayyyy =======================");
     //console.log(usersWithCommonPassion);
-    return usersWithCommonPassion;    
+    //return usersWithCommonPassion;
+
+    var usersList = [];    
+    for(obj in usersWithCommonPassion){
+        if(!usersWithCommonPassion[obj].hasOwnProperty("isProfileVisible")){
+            usersWithCommonPassion[obj].isProfileVisible = true;
+        }
+    //console.log(usersWithCommonPassion[obj].isProfileVisible);
+    }
+    console.log(usersWithCommonPassion.length);
+    usersList = usersWithCommonPassion;
+    usersList = lodash.filter(usersWithCommonPassion, { isProfileVisible: true});
+    console.log(usersList.length);
+    return usersList;
 }
 
 module.exports = app;
