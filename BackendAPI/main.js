@@ -744,10 +744,12 @@ app.put('/brizeo/users/:userid', function (req, res) {
 });
 
 var getUpSuperUserMoment = function (moments) {
+	console.log("superUserId");
+	console.log(superUserId);
 	superusermoments = lodash.filter(moments, { userId: superUserId });
 	newmoments = lodash.reject(moments, { userId: superUserId });
-	newmoments = lodash.concat(superusermoments, newmoments);
-	console.log(newmoments.length)
+	newmoments = lodash.concat(superusermoments, newmoments);	
+	console.log("New moments length :", newmoments.length)
 	return newmoments;
 }
 
@@ -964,11 +966,17 @@ app.get('/brizeo/allmoments/:sort/:filter/:pageNo', function (req, res) {
 						});
 					} else
 						callback();
-				}, function (err) {
+				}, function (err) {					
 					console.log(moments.length)
 					if (req.params.sort == "popular"){
-						moments=getPaginatedItems(moments,pageNo);
-						res.send(getUpSuperUserMoment(moments));
+						// comment to resolve sorting super user issue
+						/*moments=getPaginatedItems(moments,pageNo);
+						res.send(getUpSuperUserMoment(moments));*/
+
+						// add for super user sorting issue
+						superUserMoment = getUpSuperUserMoment(moments);						
+						paginatedItems = getPaginatedItems(moments, pageNo, superUserMoment);
+						res.send(paginatedItems);
 					}
 					else{
 						moments=getPaginatedItems(moments,pageNo);
@@ -2779,11 +2787,14 @@ function intersection_destructive(a, b)
   return result;
 }
 
-function getPaginatedItems(items, page) {
+function getPaginatedItems(items, page, superUserMoment) {
 	var page = page || 1,
-	    per_page = 35,
-	    offset = (page - 1) * per_page,
-	    paginatedItems = lodash.drop(items, offset).slice(0, per_page);
+		per_page = 35,
+		offset = (page - 1) * per_page,
+		paginatedItems = lodash.drop(items, offset).slice(0, per_page);
+		if(superUserMoment) {
+			paginatedItems = lodash.concat(superUserMoment, paginatedItems);	
+		}
 	return paginatedItems;
 }
 
@@ -2805,7 +2816,20 @@ function getSortedUserList(foundUsers, userWhoIsSearching) {
     usersWithCommonPassion = lodash.orderBy(foundUsersPassions, ["sharedPassions"],["desc"]);
     //console.log("============================== Sorted Arrrayyyy =======================");
     //console.log(usersWithCommonPassion);
-    return usersWithCommonPassion;    
+    //return usersWithCommonPassion;
+
+    var usersList = [];    
+    for(obj in usersWithCommonPassion){
+        if(!usersWithCommonPassion[obj].hasOwnProperty("isProfileVisible")){
+            usersWithCommonPassion[obj].isProfileVisible = true;
+        }
+    //console.log(usersWithCommonPassion[obj].isProfileVisible);
+    }
+    console.log(usersWithCommonPassion.length);
+    usersList = usersWithCommonPassion;
+    usersList = lodash.filter(usersWithCommonPassion, { isProfileVisible: true});
+    console.log(usersList.length);
+    return usersList;
 }
 
 module.exports = app;
